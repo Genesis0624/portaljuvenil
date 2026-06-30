@@ -1,0 +1,10 @@
+{
+  "name": "imparable-ranking",
+  "version": "1.0.0",
+  "private": true,
+  "description": "IMPARABLE — Ranking de equipos de la Sociedad de Jóvenes (frontend estático + API serverless con Neon)",
+  "type": "module",
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.4"
+  }
+}

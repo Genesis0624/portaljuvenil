@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0B1F4B">
+<title>IMPARABLE · Directiva</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app app--light" id="app">
+
+  <!-- ====== PIN ====== -->
+  <section id="screen-pin" style="display:flex;flex-direction:column;flex:1;background:var(--azul-profundo)">
+    <header class="appbar appbar--dark">
+      <button class="iconbtn" id="pin-back"></button>
+      <div class="ab-title"><div class="ab-crumb">Directiva</div><div class="ab-where">Acceso de administrador</div></div>
+      <div class="ab-right"></div>
+    </header>
+    <div class="pin-screen" style="padding-top:20px">
+      <div class="brand">IMP<span>A</span>RABLE</div>
+      <p class="sub">PIN de administrador</p>
+      <div class="pin-dots" id="pin-dots"><span class="d"></span><span class="d"></span><span class="d"></span><span class="d"></span></div>
+      <div class="keypad" id="keypad"></div>
+      <p class="pin-help">El PIN de administrador lo gestiona la directiva.</p>
+      <p class="pin-hint" style="margin-top:10px">Demo: <b>2468</b></p>
+    </div>
+  </section>
+
+  <!-- ====== PANEL ====== -->
+  <div id="screen-main" class="hide" style="display:flex;flex-direction:column;flex:1">
+    <header class="appbar appbar--dark">
+      <button class="iconbtn" id="main-back"></button>
+      <div class="ab-title"><div class="ab-crumb">Directiva</div><div class="ab-where" id="where">Bandeja de validación</div></div>
+      <div class="ab-right"><span class="badge-team">Admin</span></div>
+    </header>
+
+    <div class="lt-scroll">
+      <div class="lt-segment lt-segment--scroll" id="seg">
+        <button class="is-active" data-view="pendientes">Pendientes</button>
+        <button data-view="revisados">Revisados</button>
+        <button data-view="historial">Historial</button>
+        <button data-view="reto">Reto</button>
+        <button data-view="extra">Puntos extra</button>
+        <button data-view="equipos">Equipos</button>
+        <button data-view="feedback">Feedback</button>
+      </div>
+
+      <!-- Pendientes (lista -> detalle) -->
+      <div id="view-pendientes">
+        <div id="pend-list-wrap">
+          <div class="lt-group-head"><span class="left" id="h-pend"></span><span class="pill" id="pend-count"></span></div>
+          <div id="pend-list"></div>
+        </div>
+        <div id="pend-detail" class="hide">
+          <button class="detail-back" id="dt-back"></button>
+          <div class="detail-team" id="dt-team"></div>
+          <div id="detail"></div>
+        </div>
+      </div>
+
+      <!-- Revisados -->
+      <div id="view-revisados" class="hide">
+        <div class="lt-group-head"><span class="left" id="h-rev"></span><span class="pill" id="rev-count"></span></div>
+        <div id="rev-list"></div>
+      </div>
+
+      <!-- Historial -->
+      <div id="view-historial" class="hide">
+        <div class="lt-group-head"><span class="left" id="h-hist"></span></div>
+        <p class="muted" style="font-size:12.5px;color:var(--light-dim);margin:0 4px 14px">Quién aprobó qué, cuándo y por qué. Sirve como evidencia ante cualquier reclamo.</p>
+        <div id="hist-list"></div>
+      </div>
+
+      <!-- Reto -->
+      <div id="view-reto" class="hide">
+        <div class="lt-group-head"><span class="left" id="h-reto"></span></div>
+        <div id="reto-actual"></div>
+        <div class="field" style="margin-top:18px">
+          <label>Descripción del nuevo reto</label>
+          <input class="input" id="r-desc" placeholder="Ej. Memorizar el Salmo 91">
+        </div>
+        <div class="field">
+          <label>Tipo de reto</label>
+          <div class="lt-segment" style="margin-bottom:0">
+            <button type="button" class="is-active" data-t="individual">Individual</button>
+            <button type="button" data-t="grupal">Grupal</button>
+          </div>
+        </div>
+        <p class="muted" style="font-size:12.5px;color:var(--light-dim);margin:0 4px 14px">
+          <b>Individual:</b> 15 pts solo si el 100% del equipo cumple. <b>Grupal:</b> el equipo lo cumple en conjunto.</p>
+        <button class="btn btn--gold" id="r-publicar">Publicar reto de la semana</button>
+      </div>
+
+      <!-- Puntos extra -->
+      <div id="view-extra" class="hide">
+        <div class="lt-group-head"><span class="left" id="h-extra"></span></div>
+        <p class="muted" style="font-size:13px;color:var(--light-dim);margin:0 4px 14px">
+          Otorga puntos directamente (sin pasar por un reporte del secretario). Queda registrado en el historial.</p>
+        <div class="field"><label>Equipo</label><select class="input" id="x-equipo"></select></div>
+        <div class="field"><label>Tipo</label>
+          <select class="input" id="x-tipo">
+            <option value="colaboracion">Colaboración con la sociedad · 10 pts</option>
+            <option value="dinamica">Ganar dinámica · 15 pts</option>
+            <option value="proyecto">Proyecto especial · 20 pts</option>
+            <option value="actividad">Actividad extendida · 15 pts (si &gt;50%)</option>
+          </select>
+        </div>
+        <div class="field hide" id="x-pct-wrap"><label>% de participación</label><input class="input" id="x-pct" type="number" min="0" max="100" value="60"></div>
+        <div class="field"><label>Motivo / descripción</label><input class="input" id="x-desc" placeholder="Ej. Limpieza del templo"></div>
+        <button class="btn btn--gold" id="btn-extra">Otorgar puntos</button>
+      </div>
+
+      <!-- Equipos -->
+      <div id="view-equipos" class="hide">
+        <div class="lt-group-head"><span class="left" id="h-equipos"></span></div>
+        <p class="muted" style="font-size:12.5px;color:var(--light-dim);margin:0 4px 14px">Si a un secretario se le olvida el PIN, restablécelo aquí.</p>
+        <div id="equipos-list"></div>
+      </div>
+
+      <!-- Feedback -->
+      <div id="view-feedback" class="hide">
+        <div class="lt-group-head"><span class="left" id="h-fb"></span></div>
+        <div id="fb-content"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de confirmación -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <div class="modal-ic" id="modal-ic"></div>
+    <div class="modal-tt">¿Publicar estos puntos?</div>
+    <div class="modal-sb" id="modal-sb">Esta acción actualizará el ranking público.</div>
+    <div class="modal-actions">
+      <button class="btn btn--gold" id="modal-yes">Sí, publicar puntos</button>
+      <button class="btn btn--ghost" id="modal-no">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="config.js"></script>
+<script src="icons.js"></script>
+<script src="data.js"></script>
+<script>
+(async function () {
+  await API.init();
+  const $ = (id) => document.getElementById(id);
+  function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2300); }
+  function isLight(hex){ const c=(hex||'').replace('#',''); if(c.length<6)return false; const r=parseInt(c.substr(0,2),16),g=parseInt(c.substr(2,2),16),b=parseInt(c.substr(4,2),16); return (r*299+g*587+b*114)/1000>150; }
+  function discStyle(eq){ const bg=eq.color||'#1A3A8F'; const tx=eq.color_text||(isLight(bg)?'#0B1F4B':'#fff'); return 'background:'+bg+';color:'+tx+';'; }
+
+  $('pin-back').innerHTML = ICON.back;
+  $('main-back').innerHTML = ICON.back;
+  $('dt-back').innerHTML = ICON.back + ' Volver a pendientes';
+  $('modal-ic').innerHTML = ICON.trophy;
+  $('h-pend').innerHTML = ICON.inbox + ' Pendientes';
+  $('h-rev').innerHTML = ICON.check + ' Revisados';
+  $('h-hist').innerHTML = ICON.clock + ' Historial de puntos';
+  $('h-reto').innerHTML = ICON.flag + ' Reto de la semana';
+  $('h-extra').innerHTML = ICON.gift + ' Otorgar puntos extra';
+  $('h-equipos').innerHTML = ICON.users + ' Equipos';
+  $('h-fb').innerHTML = ICON.chat + ' Feedback recibido';
+  $('pin-back').addEventListener('click', () => location.href = 'acceso.html');
+  $('main-back').addEventListener('click', () => location.href = 'acceso.html');
+
+  const WHERE = { pendientes:'Bandeja de validación', revisados:'Registros revisados', historial:'Historial de puntos', reto:'Gestión de reto', extra:'Puntos extra', equipos:'Equipos', feedback:'Feedback' };
+
+  /* ---------- PIN ---------- */
+  let pin = '';
+  const keys = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
+  $('keypad').innerHTML = keys.map(k => k===''?'<span></span>':k==='⌫'?'<button class="key key--fn" data-k="del">Borrar</button>':`<button class="key" data-k="${k}">${k}</button>`).join('');
+  function paintDots(){ document.querySelectorAll('#pin-dots .d').forEach((d,i)=>d.classList.toggle('on', i<pin.length)); }
+  $('keypad').addEventListener('click', async (e) => {
+    const b = e.target.closest('.key'); if (!b) return;
+    if (b.dataset.k === 'del') pin = pin.slice(0,-1); else if (pin.length < 4) pin += b.dataset.k;
+    paintDots();
+    if (pin.length === 4) {
+      const ok = await API.verificarPinValidador(pin);
+      if (ok) enter();
+      else { $('pin-dots').classList.add('err'); setTimeout(()=>{ $('pin-dots').classList.remove('err'); pin=''; paintDots(); }, 450); }
+    }
+  });
+  function enter() {
+    $('screen-pin').classList.add('hide'); $('screen-main').classList.remove('hide');
+    renderPendList(); renderRevisados(); renderHistorial(); renderReto(); fillEquipos(); renderEquipos(); renderFeedback();
+  }
+
+  /* ---------- Segmento ---------- */
+  $('seg').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    document.querySelectorAll('#seg button').forEach(x => x.classList.remove('is-active'));
+    b.classList.add('is-active');
+    const v = b.dataset.view;
+    ['pendientes','revisados','historial','reto','extra','equipos','feedback'].forEach(k => $('view-'+k).classList.toggle('hide', k !== v));
+    $('where').textContent = WHERE[v];
+    if (v === 'pendientes') { backToList(); }
+    if (v === 'revisados') renderRevisados();
+    if (v === 'historial') renderHistorial();
+    if (v === 'equipos') renderEquipos();
+    if (v === 'feedback') renderFeedback();
+  });
+
+  /* ========== PENDIENTES (lista -> detalle) ========== */
+  let activeId = null;
+
+  function renderPendList() {
+    const pend = API.pendientes();
+    $('pend-count').textContent = pend.length;
+    if (!pend.length) {
+      $('pend-list').innerHTML = `<div class="empty-state"><div class="es-ic">${ICON.check}</div>
+        <div class="es-tt">Todo al día</div><div class="es-sb">No hay registros pendientes por validar.</div></div>`;
+      return;
+    }
+    $('pend-list').innerHTML = pend.map(p => {
+      const crit = [];
+      crit.push('Asistencia'); crit.push('Puntualidad'); crit.push(p.reto.tipo === 'grupal' ? 'Reto grupal' : 'Reto');
+      if (p.visita && p.visita.nombre) crit.push('Visita');
+      const nl = (p.logros||[]).length; if (nl) crit.push(nl + (nl===1?' logro':' logros'));
+      return `<button class="pend-item" data-id="${p.id}">
+        <div class="pi-top">
+          <span class="pi-team"><span class="disc" style="${discStyle(p.equipo||{})}">${p.equipo?p.equipo.inicial:'?'}</span>${p.equipo_nombre}</span>
+          <span class="pi-status">Pendiente</span>
+        </div>
+        <div class="pi-meta">${ICON.clock.replace('<svg','<svg style="width:14px;height:14px"')} Enviado hoy · ${p.hora}</div>
+        <div class="pi-crit">${crit.map(c=>`<span class="pi-chip">${c}</span>`).join('')}</div>
+      </button>`;
+    }).join('');
+  }
+  $('pend-list').addEventListener('click', (e) => {
+    const b = e.target.closest('.pend-item'); if (!b) return;
+    openDetail(b.dataset.id);
+  });
+  function openDetail(id) {
+    activeId = id;
+    const r = API.registro(id); if (!r) return;
+    $('dt-team').innerHTML = `<span class="disc" style="${discStyle(r.equipo||{})};width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-family:'Bebas Neue';font-size:17px">${r.equipo?r.equipo.inicial:'?'}</span> ${r.equipo_nombre}`;
+    $('pend-list-wrap').classList.add('hide');
+    $('pend-detail').classList.remove('hide');
+    renderDetail();
+  }
+  function backToList() {
+    activeId = null;
+    $('pend-detail').classList.add('hide');
+    $('pend-list-wrap').classList.remove('hide');
+    renderPendList();
+  }
+  $('dt-back').addEventListener('click', backToList);
+
+  function critCard(o) {
+    const stepper = o.fixed ? '' : `
+      <div class="crit-adjust"><span class="lbl">${o.adjustLabel}</span>
+        <div class="stepper" data-key="${o.key}"><button data-d="-1">−</button><span class="num" id="num-${o.key}">${o.value}</span><button data-d="1">+</button></div></div>`;
+    return `<div class="crit-card" id="card-${o.key}">
+      <div class="crit-head"><div class="crit-title">${o.icon} ${o.title}</div><div class="crit-pts" id="pts-${o.key}">+${o.points}</div></div>
+      <div class="crit-reported">${o.reported}</div>${stepper}
+      <button class="crit-confirm" data-key="${o.key}"><span class="txt">Confirmar criterio</span></button>
+    </div>`;
+  }
+  function logroCard(it) {
+    return `<div class="crit-card" id="logro-${it.idx}">
+      <div class="crit-head"><div class="crit-title">${it.icon} ${it.title}</div><div class="crit-pts" id="lpts-${it.idx}">+${it.points}</div></div>
+      <div class="crit-reported">${it.reported}</div>
+      ${it.pct ? `<div class="crit-adjust"><span class="lbl">% de participación</span>
+        <div class="stepper" data-logro="${it.idx}"><button data-d="-5">−</button><span class="num" id="lnum-${it.idx}">${it.value}</span><button data-d="5">+</button></div></div>` : ''}
+      <button class="crit-confirm" data-logro-confirm="${it.idx}"><span class="txt">Confirmar logro</span></button>
+    </div>`;
+  }
+  function doneRow(it) {
+    const undo = it.logro ? `data-undo-logro="${it.idx}"` : `data-undo-key="${it.key}"`;
+    return `<div class="done-row">
+      <span class="dr-ic">${ICON.check}</span><span class="dr-t">${it.title}</span>
+      <span class="dr-pts">+${it.points}</span>
+      <button class="dr-undo" ${undo}>${ICON.edit} Deshacer</button>
+    </div>`;
+  }
+
+  function renderDetail() {
+    const r = API.registro(activeId);
+    if (!r) { $('detail').innerHTML = ''; return; }
+    const a=r.asistencia, p=r.puntualidad, re=r.reto, v=r.visita;
+    const items = [];
+    items.push({ key:'asistencia', icon:ICON.users, title:'Asistencia',
+      reported:`Reportado: <b>${a.presentes} de ${a.total} presentes</b>`, adjustLabel:'Presentes verificados', value:a.presentes, points:(a.validada?a.puntos:API.calc.asistencia(a.presentes,a.total)), confirmed:a.validada });
+    items.push({ key:'puntualidad', icon:ICON.clock, title:'Puntualidad',
+      reported:`Reportado: <b>${p.a_tiempo} a tiempo de ${p.total}</b>`, adjustLabel:'A tiempo verificados', value:p.a_tiempo, points:(p.validada?p.puntos:API.calc.puntualidad(p.a_tiempo,p.total)), confirmed:p.validada });
+    if (re.tipo === 'individual')
+      items.push({ key:'reto', icon:ICON.flag, title:'Reto · individual',
+        reported:`Reportado: <b>${re.cumplidos} de ${re.total} cumplieron</b> · 100% = 15 pts`, adjustLabel:'Cumplieron verificados', value:re.cumplidos, points:(re.validada?re.puntos:API.calc.reto(re)), confirmed:re.validada });
+    else
+      items.push({ key:'reto', icon:ICON.flag, title:'Reto · grupal', fixed:true,
+        reported:`Reportado: <b>${re.cumplido?'Cumplido':'No cumplido'}</b>`, points:(re.validada?re.puntos:API.calc.reto(re)), confirmed:re.validada });
+    if (v.nombre)
+      items.push({ key:'visita', icon:ICON.star, title:'Visita', fixed:true,
+        reported:`Visita: <b>${v.nombre}</b> · puntos automáticos (regla de 3 veces)`, points:(v.validada?v.puntos:API.calc.visita(v.nombre)), confirmed:v.validada });
+    (r.logros || []).forEach((l, i) => {
+      const pct = l.tipo === 'actividad';
+      const points = l.confirmado ? (l.puntos||0) : (pct ? API.calc.actividad(l.porcentaje||60) : API.logroPuntos(l.tipo));
+      items.push({ logro:true, idx:i, icon:ICON.star, title:API.logroLabel(l.tipo),
+        reported:`Reportado por el secretario${l.descripcion?': <b>'+l.descripcion+'</b>':''}. Confirma si te consta.`,
+        pct, value:(l.porcentaje||60), points, confirmed:l.confirmado });
+    });
+
+    const pending = items.filter(i => !i.confirmed);
+    const confirmed = items.filter(i => i.confirmed);
+
+    let html = pending.map(it => it.logro ? logroCard(it) : critCard(it)).join('');
+    if (!pending.length) html += `<div class="allset">✓ Todo confirmado. Revisa los puntos y publica.</div>`;
+    if (confirmed.length) {
+      html += `<div class="done-head">${ICON.check.replace('<svg','<svg style="width:14px;height:14px"')} Confirmados (${confirmed.length})<span class="ln"></span></div>`;
+      html += confirmed.map(doneRow).join('');
+    }
+    const ready = pending.length === 0;
+    html += `<div class="toolbar"><button class="btn ${ready?'btn--gold':''}" id="btn-finalizar" ${ready?'':'disabled'}>${ready?'Finalizar y publicar puntos':'Confirma todos los criterios para publicar'}</button></div>`;
+    $('detail').innerHTML = html;
+  }
+
+  $('detail').addEventListener('click', async (e) => {
+    const step = e.target.closest('.stepper button');
+    if (step) {
+      const wrap = step.closest('.stepper');
+      if (wrap.dataset.key) {
+        const key = wrap.dataset.key, r = API.registro(activeId), span = $('num-'+key);
+        let max = key==='asistencia'?r.asistencia.total:key==='puntualidad'?r.puntualidad.total:r.reto.total;
+        let val = Math.max(0, Math.min(max, parseInt(span.textContent,10)+parseInt(step.dataset.d,10)));
+        span.textContent = val;
+        let pts = key==='asistencia'?API.calc.asistencia(val,r.asistencia.total):key==='puntualidad'?API.calc.puntualidad(val,r.puntualidad.total):API.calc.reto({tipo:'individual',cumplidos:val,total:r.reto.total});
+        $('pts-'+key).textContent = '+'+pts;
+      } else if (wrap.dataset.logro != null) {
+        const i = wrap.dataset.logro, span = $('lnum-'+i);
+        let val = Math.max(0, Math.min(100, parseInt(span.textContent,10)+parseInt(step.dataset.d,10)));
+        span.textContent = val; $('lpts-'+i).textContent = '+'+API.calc.actividad(val);
+      }
+      return;
+    }
+    const uk = e.target.closest('[data-undo-key]');
+    if (uk) { await API.deshacerPunto(activeId, uk.dataset.undoKey); renderDetail(); return; }
+    const ul = e.target.closest('[data-undo-logro]');
+    if (ul) { await API.deshacerLogro(activeId, +ul.dataset.undoLogro); renderDetail(); return; }
+    const cb = e.target.closest('.crit-confirm[data-key]');
+    if (cb) { const key = cb.dataset.key, span = $('num-'+key); await API.validarPunto(activeId, key, span?parseInt(span.textContent,10):null); renderDetail(); return; }
+    const lb = e.target.closest('.crit-confirm[data-logro-confirm]');
+    if (lb) { const i = +lb.dataset.logroConfirm, span = $('lnum-'+i); await API.confirmarLogro(activeId, i, { cumplido:true, porcentaje: span?parseInt(span.textContent,10):undefined }); renderDetail(); return; }
+    const fin = e.target.closest('#btn-finalizar');
+    if (fin && !fin.disabled) askPublish();
+  });
+
+  /* ---------- Modal de confirmación ---------- */
+  function askPublish() {
+    const r = API.registro(activeId); if (!r) return;
+    const total = (r.asistencia.puntos||0)+(r.puntualidad.puntos||0)+(r.reto.puntos||0)+(r.visita.puntos||0)+(r.logros||[]).reduce((s,l)=>s+(l.puntos||0),0);
+    $('modal-sb').innerHTML = `Se publicarán <b>${total} puntos</b> para <b>${r.equipo_nombre}</b> y se actualizará el ranking público.`;
+    $('modal').classList.add('show');
+  }
+  $('modal-no').addEventListener('click', () => $('modal').classList.remove('show'));
+  $('modal').addEventListener('click', (e) => { if (e.target === $('modal')) $('modal').classList.remove('show'); });
+  $('modal-yes').addEventListener('click', async () => {
+    $('modal').classList.remove('show');
+    const res = await API.finalizarValidacion(activeId);
+    if (res && !res.error) {
+      toast(`✓ ${res.total_puntos_semana} pts publicados · ranking actualizado`);
+      backToList(); renderRevisados(); renderHistorial();
+    } else toast(res && res.error ? res.error : 'No se pudo finalizar');
+  });
+
+  /* ---------- Revisados ---------- */
+  function renderRevisados() {
+    const list = API.revisados();
+    $('rev-count').textContent = list.length;
+    if (!list.length) { $('rev-list').innerHTML = `<div class="empty-state"><div class="es-ic">${ICON.inbox}</div><div class="es-tt">Sin registros revisados</div><div class="es-sb">Los registros que publiques aparecerán aquí.</div></div>`; return; }
+    $('rev-list').innerHTML = list.map(r => `
+      <div class="crit-card" style="border-color:#d3e9da;background:#fbfdfb">
+        <div class="crit-head"><div class="crit-title">${ICON.check} ${r.equipo_nombre}</div>
+          <div class="crit-pts" style="color:var(--green)">${r.total_puntos_semana} pts</div></div>
+        <div class="crit-reported">Publicado · ${r.fecha} · ${r.hora||''}</div>
+        <button class="crit-confirm" data-corregir="${r.id}">${ICON.edit.replace('<svg','<svg style="width:16px;height:16px"')} Corregir</button>
+      </div>`).join('');
+  }
+  $('rev-list').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-corregir]'); if (!b) return;
+    await API.reabrirRegistro(b.dataset.corregir);
+    // ir a Pendientes y abrir el detalle del registro reabierto
+    document.querySelectorAll('#seg button').forEach(x => x.classList.toggle('is-active', x.dataset.view === 'pendientes'));
+    ['pendientes','revisados','historial','reto','extra','equipos','feedback'].forEach(k => $('view-'+k).classList.toggle('hide', k !== 'pendientes'));
+    $('where').textContent = WHERE.pendientes;
+    renderPendList(); renderRevisados(); renderHistorial();
+    openDetail(b.dataset.corregir);
+    toast('Registro reabierto. Corrige lo necesario y vuelve a publicar.');
+  });
+
+  /* ---------- Historial ---------- */
+  function renderHistorial() {
+    const list = API.historial();
+    if (!list.length) { $('hist-list').innerHTML = `<div class="empty-state"><div class="es-ic">${ICON.clock}</div><div class="es-tt">Sin movimientos aún</div><div class="es-sb">Cada punto que apruebes quedará registrado aquí con fecha y responsable.</div></div>`; return; }
+    $('hist-list').innerHTML = list.map(h => `
+      <div class="hist-row">
+        <div class="hist-pts ${h.puntos<0?'neg':''}">${h.puntos>=0?'+':''}${h.puntos}</div>
+        <div class="hist-body">
+          <div class="hist-team">${h.equipo}</div>
+          <div class="hist-concept">${h.concepto}</div>
+          <div class="hist-foot">Aprobado por ${h.aprobado_por} · ${h.fecha}${h.hora?' · '+h.hora:''}</div>
+        </div>
+      </div>`).join('');
+  }
+
+  /* ---------- Reto (admin) ---------- */
+  let retoTipo = 'individual';
+  document.querySelector('#view-reto .lt-segment').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    document.querySelectorAll('#view-reto .lt-segment button').forEach(x => x.classList.remove('is-active'));
+    b.classList.add('is-active'); retoTipo = b.dataset.t;
+  });
+  function renderReto() {
+    const r = API.retoVigente();
+    $('reto-actual').innerHTML = `<div class="crit-card" style="border-left:3px solid var(--dorado-fuego)">
+      <div class="crit-head"><div class="crit-title">${ICON.flag} Reto vigente</div>
+        <span class="tag ${r.tipo==='individual'?'tag--gold':'tag--ghost'}" style="color:${r.tipo==='individual'?'#fff':'var(--dorado-fuego)'};background:${r.tipo==='individual'?'var(--dorado-fuego)':'transparent'}">${r.tipo==='individual'?'Individual':'Grupal'}</span></div>
+      <div class="crit-reported" style="font-size:15px;color:var(--light-text)"><b>${r.descripcion}</b></div></div>`;
+  }
+  $('r-publicar').addEventListener('click', async () => {
+    const d = $('r-desc').value.trim();
+    if (!d) return toast('Escribe la descripción del reto');
+    $('r-publicar').disabled = true;
+    await API.crearReto({ descripcion: d, tipo: retoTipo });
+    $('r-publicar').disabled = false;
+    $('r-desc').value = '';
+    renderReto(); toast('Reto publicado · ya es visible al público');
+  });
+
+  /* ---------- Puntos extra ---------- */
+  function fillEquipos() { $('x-equipo').innerHTML = API.equipos().map(e => `<option value="${e.id}">${e.nombre}</option>`).join(''); }
+  $('x-tipo').addEventListener('change', () => $('x-pct-wrap').classList.toggle('hide', $('x-tipo').value !== 'actividad'));
+  $('btn-extra').addEventListener('click', async () => {
+    if (!$('x-equipo').value) return toast('Selecciona un equipo');
+    $('btn-extra').disabled = true;
+    await API.otorgarPuntoExtra({ equipo_id:$('x-equipo').value, tipo:$('x-tipo').value, descripcion:$('x-desc').value.trim(), porcentaje:parseInt($('x-pct').value,10)||0, otorgado_por:'Directiva' });
+    $('btn-extra').disabled = false;
+    $('x-desc').value = ''; renderHistorial(); toast('Puntos otorgados · registrados en el historial');
+  });
+
+  /* ---------- Equipos (reset de PIN) ---------- */
+  function renderEquipos() {
+    const list = API.todosLosEquipos();
+    $('equipos-list').innerHTML = list.map(e => `
+      <div class="team-row" data-team="${e.id}">
+        <span class="tr-disc" style="${discStyle(e)}">${e.inicial}</span>
+        <span class="tr-body"><span class="tr-name">${e.nombre}${e.activo?'':' · (inactivo)'}</span>
+          <span class="tr-pin">PIN: ${e.pin || '••••'} · ${e.miembros} miembros</span></span>
+        <button class="tr-edit" data-edit="${e.id}">Cambiar PIN</button>
+      </div>`).join('');
+  }
+  $('equipos-list').addEventListener('click', async (e) => {
+    const ed = e.target.closest('[data-edit]');
+    if (ed) {
+      const id = ed.dataset.edit; const eq = API.equipo(id);
+      const row = ed.closest('.team-row');
+      row.innerHTML = `<span class="tr-disc" style="${discStyle(eq)}">${eq.inicial}</span>
+        <span class="tr-body" style="display:flex;gap:8px;align-items:center">
+          <input class="input" id="newpin-${id}" inputmode="numeric" maxlength="4" value="${eq.pin || ''}" placeholder="Nuevo PIN" style="padding:8px 10px">
+          <button class="tr-edit" data-save="${id}" style="background:var(--azul-profundo);color:#fff;border-color:var(--azul-profundo)">Guardar</button>
+          <button class="tr-edit" data-cancel="1">Cancelar</button>
+        </span>`;
+      return;
+    }
+    const sv = e.target.closest('[data-save]');
+    if (sv) {
+      const id = sv.dataset.save; const val = ($('newpin-'+id)||{}).value || '';
+      if (!/^\d{4}$/.test(val)) return toast('El PIN debe ser de 4 dígitos');
+      await API.actualizarEquipo(id, { pin: val }); renderEquipos(); toast('PIN actualizado');
+      return;
+    }
+    if (e.target.closest('[data-cancel]')) renderEquipos();
+  });
+
+  /* ---------- Feedback ---------- */
+  function renderFeedback() {
+    const r = API.feedbackResumen(), list = API.feedbackList();
+    if (!list.length) {
+      $('fb-content').innerHTML = `<div class="empty-state"><div class="es-ic">${ICON.chat}</div>
+        <div class="es-tt">Aún no hay respuestas</div>
+        <div class="es-sb">Comparte el enlace de la app para que los jóvenes dejen su opinión después de la reunión.</div></div>`;
+      return;
+    }
+    const stats = `<div class="fb-stats">
+      <div class="fb-stat"><div class="num">${r.promedio}<span class="gold"> ★</span></div><div class="lbl">Promedio</div></div>
+      <div class="fb-stat"><div class="num">${r.total}</div><div class="lbl">Respuestas</div></div>
+    </div>`;
+    const cards = list.map(f => `
+      <div class="fb-card">
+        <div class="fb-stars">${'★'.repeat(f.rating)}${'☆'.repeat(5-f.rating)}</div>
+        <div class="fb-text">${f.comentario || '<span style="color:var(--light-dim)">Sin comentario</span>'}</div>
+        <div class="fb-foot"><span class="fb-anon">Anónimo</span> ${f.fecha}</div>
+      </div>`).join('');
+    $('fb-content').innerHTML = stats + `<div class="done-head" style="color:var(--light-dim)">${ICON.chat.replace('<svg','<svg style="width:14px;height:14px"')} Últimos comentarios<span class="ln"></span></div>` + cards;
+  }
+})();
+</script>
+</body>
+</html>

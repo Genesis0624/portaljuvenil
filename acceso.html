@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0B1F4B">
+<title>IMPARABLE · Acceso</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app" id="app">
+
+  <header class="appbar appbar--dark">
+    <button class="iconbtn" id="btn-back"></button>
+    <div class="ab-title">
+      <div class="ab-crumb">IMPARABLE</div>
+      <div class="ab-where">Acceso</div>
+    </div>
+    <div class="ab-right"></div>
+  </header>
+
+  <div class="pin-screen" style="justify-content:flex-start;padding-top:40px;background:var(--azul-profundo)">
+    <p class="sub" style="margin-bottom:26px;max-width:300px">Elige tu rol para continuar. Cada rol tiene su propio acceso.</p>
+    <div class="roles">
+      <a class="role-card" href="secretario.html">
+        <span class="role-ic" id="ic-sec"></span>
+        <span>
+          <span class="role-tt">Secretario</span>
+          <span class="role-sb">Registra a tu equipo en la reunión · PIN del equipo</span>
+        </span>
+      </a>
+      <a class="role-card" href="validador.html">
+        <span class="role-ic" id="ic-val"></span>
+        <span>
+          <span class="role-tt">Directiva</span>
+          <span class="role-sb">Valida registros y gestiona retos · PIN de administrador</span>
+        </span>
+      </a>
+    </div>
+    <p class="pin-hint" style="margin-top:30px">¿Solo quieres ver el ranking? <a class="plain gold" href="index.html" style="text-decoration:underline">Volver al inicio</a></p>
+  </div>
+</div>
+
+<script src="icons.js"></script>
+<script>
+  document.getElementById('btn-back').innerHTML = ICON.back;
+  document.getElementById('btn-back').addEventListener('click', () => location.href = 'index.html');
+  document.getElementById('ic-sec').innerHTML = ICON.clipboard;
+  document.getElementById('ic-val').innerHTML = ICON.shield;
+</script>
+</body>
+</html>

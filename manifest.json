@@ -1,0 +1,20 @@
+{
+  "name": "IMPARABLE — Ranking Sociedad de Jóvenes",
+  "short_name": "IMPARABLE",
+  "description": "Ranking de equipos de la Sociedad de Jóvenes: marcador en vivo, registro de secretario y validación de la directiva.",
+  "start_url": "index.html",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0B1F4B",
+  "theme_color": "#0B1F4B",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

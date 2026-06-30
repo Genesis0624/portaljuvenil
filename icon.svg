@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#0B1F4B"/>
+  <circle cx="256" cy="180" r="150" fill="none" stroke="#D4A017" stroke-opacity="0.10" stroke-width="2"/>
+  <text x="50%" y="232" text-anchor="middle" font-family="Bebas Neue, Arial Narrow, sans-serif" font-size="150" font-weight="700" fill="#FFFFFF" letter-spacing="4">IMP<tspan fill="#D4A017">A</tspan></text>
+  <text x="50%" y="356" text-anchor="middle" font-family="Bebas Neue, Arial Narrow, sans-serif" font-size="150" font-weight="700" fill="#FFFFFF" letter-spacing="4">RABLE</text>
+  <rect x="120" y="392" width="272" height="6" rx="3" fill="#D4A017"/>
+</svg>

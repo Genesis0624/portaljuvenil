@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0B1F4B">
+<title>IMPARABLE · Reto</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app" id="app">
+
+  <header class="appbar">
+    <button class="iconbtn" id="btn-back" style="color:#fff"></button>
+    <div class="ab-title">
+      <div class="ab-crumb">IMPARABLE</div>
+      <div class="ab-where" style="color:#fff">Reto de la semana</div>
+    </div>
+    <div class="ab-right"></div>
+  </header>
+
+  <main class="scroll">
+    <div id="hero"></div>
+
+    <div class="section-divider"><span class="ttl">Retos anteriores</span><span class="ln"></span></div>
+    <div id="hist"></div>
+  </main>
+
+  <nav class="bottomnav">
+    <a class="navitem" href="index.html" id="n-rank"></a>
+    <a class="navitem is-active" href="reto.html" id="n-reto"></a>
+    <a class="navitem" href="feedback.html" id="n-feedback"></a>
+    <a class="navitem" href="acceso.html" id="n-acceso"></a>
+  </nav>
+</div>
+
+<script src="config.js"></script>
+<script src="icons.js"></script>
+<script src="data.js"></script>
+<script>
+(async function () {
+  await API.init();
+  const $ = (id) => document.getElementById(id);
+  $('btn-back').innerHTML = ICON.back;
+  $('btn-back').addEventListener('click', () => location.href = 'index.html');
+  $('n-rank').innerHTML = ICON.trophy + '<span>Ranking</span>';
+  $('n-reto').innerHTML = ICON.flag + '<span>Reto</span>';
+  $('n-feedback').innerHTML = ICON.chat + '<span>Feedback</span>';
+  $('n-acceso').innerHTML = ICON.lock + '<span>Acceso</span>';
+
+  const reto = API.retoVigente();
+  const esInd = reto.tipo === 'individual';
+  $('hero').innerHTML = `
+    <div class="reto-hero">
+      <div class="reto-head">
+        <span class="eyebrow">Vigente esta semana</span>
+        <span class="tag ${esInd ? 'tag--gold' : 'tag--ghost'}">${esInd ? 'Individual' : 'Grupal'}</span>
+      </div>
+      <div class="big">${reto.descripcion}</div>
+      <div class="reto-meta" style="font-size:13px">
+        ${esInd
+          ? 'Reto <b>individual</b>: vale 15 puntos solo si <b>el 100%</b> del equipo lo cumple (todo o nada).'
+          : 'Reto <b>grupal</b>: el equipo lo cumple en conjunto y suma 15 puntos.'}
+      </div>
+    </div>
+    <p class="muted" style="font-size:12px;text-align:center;margin-top:14px">La directiva define el reto de cada semana.</p>`;
+
+  const hist = API.retosHistorial();
+  $('hist').innerHTML = hist.length ? hist.map(h => `
+    <div class="reto-hist-row">
+      <span class="d">${(h.fecha||'').slice(5)}</span>
+      <span class="x">${h.descripcion}</span>
+      <span class="tag ${h.tipo === 'individual' ? 'tag--ghost' : 'tag--ghost'}">${h.tipo === 'individual' ? 'Indiv.' : 'Grupal'}</span>
+    </div>`).join('') : '<p class="muted center" style="padding:20px">Aún no hay retos anteriores.</p>';
+})();
+</script>
+</body>
+</html>

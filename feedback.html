@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0B1F4B">
+<title>IMPARABLE · Feedback</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app" id="app">
+
+  <header class="appbar">
+    <button class="iconbtn" id="btn-back" style="color:#fff"></button>
+    <div class="ab-title"><div class="ab-crumb">IMPARABLE</div><div class="ab-where" style="color:#fff">Feedback</div></div>
+    <div class="ab-right"></div>
+  </header>
+
+  <main class="scroll">
+    <!-- Formulario -->
+    <section id="form">
+      <div class="reto-card" style="border-color:var(--line)">
+        <span class="eyebrow">Tu voz cuenta</span>
+        <div class="reto-text" style="font-size:22px;margin-top:10px">¿Cómo estuvo la Sociedad de Jóvenes de este viernes?</div>
+        <div class="reto-meta">Es anónimo y toma menos de un minuto.</div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid var(--line);border-radius:16px;padding:22px;margin-top:16px">
+        <p class="eyebrow" style="text-align:center;color:var(--text-dim);margin-bottom:4px">Tu calificación</p>
+        <div class="stars" id="stars"></div>
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:6px">Comentario (opcional)</label>
+        <textarea class="input" id="comentario" rows="4" placeholder="¿Qué te gustó? ¿Qué mejorarías?" style="resize:vertical"></textarea>
+        <button class="btn btn--gold" id="enviar" style="margin-top:16px">Enviar feedback</button>
+      </div>
+    </section>
+
+    <!-- Confirmación -->
+    <section id="gracias" class="hide" style="text-align:center;padding:50px 10px">
+      <div class="success-mark" id="ok-mark" style="margin:0 auto 24px"></div>
+      <div class="brand brand--sm">¡Gracias!</div>
+      <p class="muted" style="margin-top:8px">Tu feedback quedó guardado. La directiva lo revisará.</p>
+      <a class="btn btn--gold" href="index.html" style="max-width:280px;margin:26px auto 0">Volver al ranking</a>
+    </section>
+  </main>
+
+  <nav class="bottomnav">
+    <a class="navitem" href="index.html" id="n-rank"></a>
+    <a class="navitem" href="reto.html" id="n-reto"></a>
+    <a class="navitem is-active" href="feedback.html" id="n-feedback"></a>
+    <a class="navitem" href="acceso.html" id="n-acceso"></a>
+  </nav>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="config.js"></script>
+<script src="icons.js"></script>
+<script src="data.js"></script>
+<script>
+(async function () {
+  await API.init();
+  const $ = (id) => document.getElementById(id);
+  function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); }
+  $('btn-back').innerHTML = ICON.back;
+  $('btn-back').addEventListener('click', () => location.href = 'index.html');
+  $('ok-mark').innerHTML = ICON.check;
+  $('n-rank').innerHTML = ICON.trophy + '<span>Ranking</span>';
+  $('n-reto').innerHTML = ICON.flag + '<span>Reto</span>';
+  $('n-feedback').innerHTML = ICON.chat + '<span>Feedback</span>';
+  $('n-acceso').innerHTML = ICON.lock + '<span>Acceso</span>';
+
+  let rating = 0;
+  function paintStars() {
+    $('stars').innerHTML = [1,2,3,4,5].map(i => `<span class="star ${i<=rating?'on':''}" data-v="${i}">${ICON.star.replace('fill="none"', i<=rating?'fill="currentColor"':'fill="none"')}</span>`).join('');
+  }
+  $('stars').addEventListener('click', (e) => { const s = e.target.closest('.star'); if (!s) return; rating = +s.dataset.v; paintStars(); });
+  paintStars();
+
+  $('enviar').addEventListener('click', async () => {
+    if (!rating) return toast('Elige una calificación');
+    $('enviar').disabled = true;
+    await API.enviarFeedback({ rating, comentario: $('comentario').value });
+    $('form').classList.add('hide');
+    $('gracias').classList.remove('hide');
+  });
+})();
+</script>
+</body>
+</html>

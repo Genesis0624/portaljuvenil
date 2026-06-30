@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0B1F4B">
+<title>IMPARABLE · Ranking</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- Encabezado modo proyección (oculto por defecto) -->
+  <div class="proj-header">
+    <div class="brand">IMP<span>A</span>RABLE</div>
+    <button class="exitproj" id="exit-proj">Salir de proyección</button>
+  </div>
+
+  <header class="topbar">
+    <button class="brand-link brand" id="logo">IMP<span>A</span>RABLE</button>
+    <div class="topbar-right">
+      <button class="btn-proj" id="btn-project"></button>
+      <span class="badge-live"><span class="dot"></span> En vivo</span>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab is-active" data-tipo="semanal">Esta semana</button>
+    <button class="tab" data-tipo="mensual">Del mes</button>
+    <button class="tab" data-tipo="acumulado">Acumulado</button>
+  </nav>
+
+  <main class="scroll">
+    <section id="podium" class="podium"></section>
+    <section id="rest"></section>
+
+    <article class="reto-card reto-feature" id="reto"></article>
+
+    <a class="feedback-cta" href="feedback.html">
+      <span class="fc-ic" id="fc-ic"></span>
+      <span class="fc-t"><b>¿Cómo estuvo la Sociedad de Jóvenes?</b><span>Deja tu feedback · es anónimo y rápido</span></span>
+      <span class="fc-go">›</span>
+    </a>
+
+    <a class="acceso-mini" href="acceso.html" id="acceso-mini"></a>
+  </main>
+
+  <nav class="bottomnav">
+    <a class="navitem is-active" href="index.html" id="n-rank"></a>
+    <a class="navitem" href="reto.html" id="n-reto"></a>
+    <a class="navitem" href="feedback.html" id="n-feedback"></a>
+    <a class="navitem" href="acceso.html" id="n-acceso"></a>
+  </nav>
+</div>
+
+<!-- Hoja de detalle de equipo -->
+<div class="sheet-backdrop" id="sheet-bg">
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<script src="config.js"></script>
+<script src="icons.js"></script>
+<script src="data.js"></script>
+<script>
+(async function () {
+  await API.init();
+  const $ = (id) => document.getElementById(id);
+  $('n-rank').innerHTML = ICON.trophy + '<span>Ranking</span>';
+  $('n-reto').innerHTML = ICON.flag + '<span>Reto</span>';
+  $('n-feedback').innerHTML = ICON.chat + '<span>Feedback</span>';
+  $('n-acceso').innerHTML = ICON.lock + '<span>Acceso</span>';
+  $('fc-ic').innerHTML = ICON.chat;
+  $('acceso-mini').innerHTML = ICON.lock + '<span>Acceso secretario / directiva</span>';
+  $('btn-project').innerHTML = ICON.expand + '<span>Proyectar</span>';
+  $('logo').addEventListener('click', () => { tipo = 'semanal'; setTab('semanal'); render(); window.scrollTo(0,0); });
+  // 'En vivo' debe verse legible; el reto se actualiza al volver de proyección
+
+  let tipo = 'semanal';
+
+  function isLight(hex) {
+    const c = (hex || '').replace('#', '');
+    if (c.length < 6) return false;
+    const r = parseInt(c.substr(0,2),16), g = parseInt(c.substr(2,2),16), b = parseInt(c.substr(4,2),16);
+    return (r*299 + g*587 + b*114) / 1000 > 150;
+  }
+  function discStyle(f) {
+    const bg = f.color || '#1A3A8F';
+    const tx = f.color_text || (isLight(bg) ? '#0B1F4B' : '#fff');
+    return 'background:' + bg + ';color:' + tx + ';';
+  }
+
+  function render() {
+    const filas = API.ranking(tipo);
+    const top3 = filas.slice(0, 3);
+    const rest = filas.slice(3);
+    const order = [top3[1], top3[0], top3[2]].filter(Boolean);
+
+    $('podium').innerHTML = order.map(f => `
+      <div class="pod pod--${f.pos}" data-team="${f.id}">
+        <div class="pod-crown">${f.pos === 1 ? '👑' : ''}</div>
+        <div class="pod-disc" style="${discStyle(f)}">${f.inicial}<span class="pod-rank">${f.pos}</span></div>
+        <div class="pod-name">${f.nombre}</div>
+        <div class="pod-pts">${f.puntos}<small>PTS</small></div>
+        <div class="pod-base"></div>
+      </div>`).join('');
+
+    $('rest').innerHTML = rest.map(f => `
+      <div class="rank-row" data-team="${f.id}">
+        <div class="rank-pos">${f.pos}</div>
+        <div class="team-disc" style="${discStyle(f)}">${f.inicial}</div>
+        <div class="rank-info">
+          <div class="rank-name">${f.nombre}</div>
+          <div class="rank-sub">${f.miembros} miembros</div>
+        </div>
+        <div class="rank-pts">${f.puntos}<small>PTS</small></div>
+      </div>`).join('');
+
+    const reto = API.retoVigente();
+    const esInd = reto.tipo === 'individual';
+    $('reto').innerHTML = `
+      <div class="reto-head">
+        <div class="reto-label">${ICON.flag.replace('<svg','<svg style="width:18px;height:18px;color:var(--dorado-fuego)"')}
+          <span class="eyebrow">Reto de la semana</span></div>
+        <span class="tag ${esInd ? 'tag--gold' : 'tag--ghost'}">${esInd ? 'Individual' : 'Grupal'}</span>
+      </div>
+      <div class="reto-text">${reto.descripcion}</div>
+      <div class="reto-meta">${esInd ? 'Todo el equipo debe cumplirlo para sumar 15 puntos.' : 'El equipo lo cumple en conjunto: 15 puntos si se logra.'}
+        · <a class="plain gold" href="reto.html" style="text-decoration:underline">Ver detalle</a></div>`;
+  }
+
+  function setTab(t) {
+    document.querySelectorAll('.tab').forEach(x => x.classList.toggle('is-active', x.dataset.tipo === t));
+  }
+  $('tabs').addEventListener('click', (e) => {
+    const btn = e.target.closest('.tab'); if (!btn) return;
+    tipo = btn.dataset.tipo; setTab(tipo); render();
+  });
+
+  /* Detalle de equipo (toca un equipo) */
+  document.body.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-team]'); if (!el) return;
+    const eq = API.equipo(el.dataset.team); if (!eq) return;
+    const m = API.miembros(eq.id);
+    const tx = eq.color_text || (isLight(eq.color) ? '#0B1F4B' : '#fff');
+    $('sheet').innerHTML = `
+      <div class="sheet-grab"></div>
+      <div class="sheet-disc" style="background:${eq.color};color:${tx}">${eq.inicial}</div>
+      <div class="brand brand--sm" style="font-size:26px">${eq.nombre}</div>
+      ${eq.grito ? `<p class="gold" style="font-style:italic;margin-top:6px">“${eq.grito}”</p>` : ''}
+      <div style="margin-top:16px">
+        ${eq.versiculo ? `<div class="sheet-row"><span class="k">Versículo</span><span class="v">${eq.versiculo}</span></div>` : ''}
+        <div class="sheet-row"><span class="k">Miembros</span><span class="v">${m.length}</span></div>
+        <div class="sheet-row"><span class="k">Integrantes</span><span class="v" style="max-width:60%">${m.join(', ') || '—'}</span></div>
+      </div>`;
+    $('sheet-bg').classList.add('show');
+  });
+  $('sheet-bg').addEventListener('click', (e) => { if (e.target === $('sheet-bg')) $('sheet-bg').classList.remove('show'); });
+
+  /* Modo proyección */
+  function enterProj() {
+    document.body.classList.add('projection');
+    const el = document.documentElement;
+    if (el.requestFullscreen) el.requestFullscreen().catch(()=>{});
+  }
+  function exitProj() {
+    document.body.classList.remove('projection');
+    if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(()=>{});
+  }
+  $('btn-project').addEventListener('click', enterProj);
+  $('exit-proj').addEventListener('click', exitProj);
+  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) document.body.classList.remove('projection'); });
+
+  render();
+})();
+</script>
+</body>
+</html>
