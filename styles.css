@@ -824,24 +824,53 @@ body.projection .tab { font-size: 17px; padding: 14px; }
 .fb-card .fb-foot { font-size: 11px; color: var(--light-dim); margin-top: 6px; display: flex; gap: 8px; align-items: center; }
 .fb-anon { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--light-dim); background: #eef2f8; padding: 3px 8px; border-radius: 20px; }
 
-/* =================== v5 — versión escritorio =================== */
-/* En pantallas anchas las pestañas del panel (Pendientes, Revisados,
-   Historial, Reto, Extra, Equipos, Feedback) ya NO se deslizan en
-   horizontal: se acomodan en varias filas y todas quedan visibles.
-   En móvil se mantiene el desplazamiento horizontal. */
+/* =================== v5 — RESPONSIVO / versión computadora ===================
+   En el celular: el diseño de columna actual, SIN cambios.
+   En la computadora (>=768px): TODAS las pantallas se extienden. */
+
+/* Las pestañas del panel de directiva ya no dependen del deslizamiento
+   horizontal: se acomodan en filas (en móvil se mantiene el scroll). */
 @media (min-width: 620px) {
   .lt-segment--scroll { overflow-x: visible; flex-wrap: wrap; }
-  .lt-segment--scroll button { flex: 1 1 auto; min-width: 96px; }
+  .lt-segment--scroll button { flex: 0 1 auto; }
 }
 
-/* Vistas de secretario y directiva más cómodas en la computadora. */
-@media (min-width: 760px) {
-  .app--light { max-width: 760px; box-shadow: 0 0 0 1px var(--light-line); }
-  .lt-scroll { padding-left: 24px; padding-right: 24px; }
-  /* La bandeja de pendientes aprovecha el ancho en 2 columnas. */
-  #pend-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (min-width: 768px) {
+  /* Contenedores más anchos en la compu */
+  .app { max-width: 720px; }
+  .app--light { max-width: 720px; box-shadow: 0 0 0 1px var(--light-line); }
+  .bottomnav { max-width: 720px; }
+  .sheet { max-width: 720px; }
+
+  /* Ranking público: podio y filas más grandes para llenar el ancho */
+  .podium { gap: 22px; margin-bottom: 30px; }
+  .pod--1 .pod-disc { width: 118px; height: 118px; font-size: 58px; }
+  .pod--2 .pod-disc, .pod--3 .pod-disc { width: 92px; height: 92px; font-size: 44px; }
+  .pod--1 .pod-base { height: 72px; }
+  .pod--2 .pod-base { height: 48px; }
+  .pod--3 .pod-base { height: 34px; }
+  .pod-name { font-size: 15px; }
+  .pod-pts { font-size: 44px; }
+  .rank-row { padding: 16px 20px; }
+  .rank-name { font-size: 16px; }
+  .rank-sub { font-size: 12px; }
+  .rank-pts { font-size: 32px; }
+  .team-disc { width: 44px; height: 44px; font-size: 21px; }
+  .reto-feature .reto-text { font-size: 20px; }
+
+  /* Feedback público: contenido legible y centrado */
+  #form, #gracias { max-width: 560px; margin-left: auto; margin-right: auto; }
+
+  /* Secretario: registro y creación de equipo centrados (no estirados) */
+  #screen-reg .lt-scroll { max-width: 640px; margin-left: auto; margin-right: auto; }
+  #screen-create .lt-scroll { max-width: 560px; margin-left: auto; margin-right: auto; }
+
+  /* Directiva: aprovecha el ancho — pendientes en 2 columnas */
+  #screen-main .lt-scroll { padding-left: 24px; padding-right: 24px; }
+  #pend-list { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
   #pend-list .pend-item { margin-bottom: 0; }
   #pend-list .empty-state { grid-column: 1 / -1; }
-  /* Puntos extra y feedback: contenido centrado, no estirado de más. */
-  #view-extra, #view-reto { max-width: 520px; }
+  #pend-detail { max-width: 640px; margin-left: auto; margin-right: auto; }
+  #view-reto, #view-extra { max-width: 560px; }
+  #hist-list, #rev-list, #equipos-list, #fb-content { max-width: 680px; }
 }
