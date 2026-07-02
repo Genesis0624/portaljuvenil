@@ -823,3 +823,25 @@ body.projection .tab { font-size: 17px; padding: 14px; }
 .fb-card .fb-text { font-size: 14px; color: var(--light-text); margin-top: 4px; overflow-wrap: anywhere; }
 .fb-card .fb-foot { font-size: 11px; color: var(--light-dim); margin-top: 6px; display: flex; gap: 8px; align-items: center; }
 .fb-anon { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--light-dim); background: #eef2f8; padding: 3px 8px; border-radius: 20px; }
+
+/* =================== v5 — versión escritorio =================== */
+/* En pantallas anchas las pestañas del panel (Pendientes, Revisados,
+   Historial, Reto, Extra, Equipos, Feedback) ya NO se deslizan en
+   horizontal: se acomodan en varias filas y todas quedan visibles.
+   En móvil se mantiene el desplazamiento horizontal. */
+@media (min-width: 620px) {
+  .lt-segment--scroll { overflow-x: visible; flex-wrap: wrap; }
+  .lt-segment--scroll button { flex: 1 1 auto; min-width: 96px; }
+}
+
+/* Vistas de secretario y directiva más cómodas en la computadora. */
+@media (min-width: 760px) {
+  .app--light { max-width: 760px; box-shadow: 0 0 0 1px var(--light-line); }
+  .lt-scroll { padding-left: 24px; padding-right: 24px; }
+  /* La bandeja de pendientes aprovecha el ancho en 2 columnas. */
+  #pend-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  #pend-list .pend-item { margin-bottom: 0; }
+  #pend-list .empty-state { grid-column: 1 / -1; }
+  /* Puntos extra y feedback: contenido centrado, no estirado de más. */
+  #view-extra, #view-reto { max-width: 520px; }
+}
