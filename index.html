@@ -93,31 +93,43 @@
 
   function render() {
     const filas = API.ranking(tipo);
-    const top3 = filas.slice(0, 3);
-    const rest = filas.slice(3);
-    const order = [top3[1], top3[0], top3[2]].filter(Boolean);
 
-    $('podium').innerHTML = order.map(f => `
-      <div class="pod pod--${f.pos}" data-team="${f.id}">
-        <div class="pod-crown">${f.pos === 1 ? '👑' : ''}</div>
-        <div class="pod-disc" style="${discStyle(f)}">${f.inicial}<span class="pod-rank">${f.pos}</span></div>
-        <div class="pod-name">${f.nombre}</div>
-        <div class="pod-pts">${f.puntos}<small>PTS</small></div>
-        <div class="pod-base"></div>
-      </div>`).join('');
+    if (!filas.length) {
+      $('podium').innerHTML = '';
+      $('rest').innerHTML = `<div class="empty-state dark">
+        <div class="es-ic">${ICON.trophy}</div>
+        <div class="es-tt">Aún no hay equipos</div>
+        <div class="es-sb">Cuando los secretarios registren sus equipos, el marcador aparecerá aquí en vivo.</div>
+      </div>`;
+    } else {
+      const top3 = filas.slice(0, 3);
+      const rest = filas.slice(3);
+      const order = [top3[1], top3[0], top3[2]].filter(Boolean);
 
-    $('rest').innerHTML = rest.map(f => `
-      <div class="rank-row" data-team="${f.id}">
-        <div class="rank-pos">${f.pos}</div>
-        <div class="team-disc" style="${discStyle(f)}">${f.inicial}</div>
-        <div class="rank-info">
-          <div class="rank-name">${f.nombre}</div>
-          <div class="rank-sub">${f.miembros} miembros</div>
-        </div>
-        <div class="rank-pts">${f.puntos}<small>PTS</small></div>
-      </div>`).join('');
+      $('podium').innerHTML = order.map(f => `
+        <div class="pod pod--${f.pos}" data-team="${f.id}">
+          <div class="pod-crown">${f.pos === 1 ? '👑' : ''}</div>
+          <div class="pod-disc" style="${discStyle(f)}">${f.inicial}<span class="pod-rank">${f.pos}</span></div>
+          <div class="pod-name">${f.nombre}</div>
+          <div class="pod-pts">${f.puntos}<small>PTS</small></div>
+          <div class="pod-base"></div>
+        </div>`).join('');
+
+      $('rest').innerHTML = rest.map(f => `
+        <div class="rank-row" data-team="${f.id}">
+          <div class="rank-pos">${f.pos}</div>
+          <div class="team-disc" style="${discStyle(f)}">${f.inicial}</div>
+          <div class="rank-info">
+            <div class="rank-name">${f.nombre}</div>
+            <div class="rank-sub">${f.miembros} miembros</div>
+          </div>
+          <div class="rank-pts">${f.puntos}<small>PTS</small></div>
+        </div>`).join('');
+    }
 
     const reto = API.retoVigente();
+    if (!reto) { $('reto').style.display = 'none'; return; }
+    $('reto').style.display = '';
     const esInd = reto.tipo === 'individual';
     $('reto').innerHTML = `
       <div class="reto-head">
