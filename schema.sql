@@ -104,3 +104,27 @@ INSERT INTO equipos (id, nombre, inicial, color, color_text, pin, grito, versicu
 INSERT INTO retos (id, descripcion, tipo, fecha, activo) VALUES
   ('r-salmo23', 'Memorizar y recitar el Salmo 23 completo', 'individual', CURRENT_DATE, TRUE)
   ON CONFLICT (id) DO NOTHING;
+
+-- Integrantes demo (para que los equipos sean usables de inmediato).
+-- Puedes editarlos o crear tus equipos reales desde la app.
+INSERT INTO miembros (id, equipo_id, nombre, fecha_union) VALUES
+  ('m-aguilas-1','aguilas','Marcos Pérez',CURRENT_DATE),('m-aguilas-2','aguilas','Lucía Fonseca',CURRENT_DATE),
+  ('m-aguilas-3','aguilas','Andrés Gil',CURRENT_DATE),('m-aguilas-4','aguilas','Paola Núñez',CURRENT_DATE),
+  ('m-aguilas-5','aguilas','Tomás Vera',CURRENT_DATE),('m-aguilas-6','aguilas','Carmen Ruiz',CURRENT_DATE),
+  ('m-centinelas-1','centinelas','Iván Solís',CURRENT_DATE),('m-centinelas-2','centinelas','Karen Mora',CURRENT_DATE),
+  ('m-centinelas-3','centinelas','Bruno Castro',CURRENT_DATE),('m-centinelas-4','centinelas','Elena Pinto',CURRENT_DATE),
+  ('m-centinelas-5','centinelas','Hugo Vargas',CURRENT_DATE),
+  ('m-leones-1','leones','Daniel Ortega',CURRENT_DATE),('m-leones-2','leones','Sara Méndez',CURRENT_DATE),
+  ('m-leones-3','leones','Josué Rivas',CURRENT_DATE),('m-leones-4','leones','Raquel Lara',CURRENT_DATE),
+  ('m-leones-5','leones','Esteban Cruz',CURRENT_DATE),('m-leones-6','leones','Noemí Soto',CURRENT_DATE),
+  ('m-leones-7','leones','Caleb Díaz',CURRENT_DATE),
+  ('m-vencedores-1','vencedores','Rubén Díaz',CURRENT_DATE),('m-vencedores-2','vencedores','Tania Rey',CURRENT_DATE),
+  ('m-vencedores-3','vencedores','Omar Lazo',CURRENT_DATE),('m-vencedores-4','vencedores','Pía Solano',CURRENT_DATE),
+  ('m-vencedores-5','vencedores','Gael Marín',CURRENT_DATE),
+  ('m-embajadores-1','embajadores','Saúl Vidal',CURRENT_DATE),('m-embajadores-2','embajadores','Noa Quintero',CURRENT_DATE),
+  ('m-embajadores-3','embajadores','Beto Lima',CURRENT_DATE),('m-embajadores-4','embajadores','Mía Castro',CURRENT_DATE),
+  ('m-embajadores-5','embajadores','Aldo Peña',CURRENT_DATE),('m-embajadores-6','embajadores','Vera Soto',CURRENT_DATE),
+  ('m-centella-1','centella','Ciro Ramos',CURRENT_DATE),('m-centella-2','centella','Lía Mena',CURRENT_DATE),
+  ('m-centella-3','centella','Pol Arias',CURRENT_DATE),('m-centella-4','centella','Ruth Vega',CURRENT_DATE),
+  ('m-centella-5','centella','Iker Soto',CURRENT_DATE)
+  ON CONFLICT (id) DO NOTHING;

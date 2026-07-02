@@ -1,17 +1,21 @@
 /* =========================================================
    IMPARABLE — Configuración
    ---------------------------------------------------------
-   API_URL apunta a la mini-API (función serverless en Vercel)
-   que habla con la base de datos Neon.
+   Detecta el entorno automáticamente:
+   - En local (localhost / archivo) -> modo DEMO (datos de
+     prueba en el navegador, no tocan la base real).
+   - Desplegado (Vercel) -> usa la mini-API "/api/imparable"
+     que habla con tu base de datos Neon.
 
-   - VACÍO ("")  -> modo DEMO (datos de prueba en el navegador,
-     no se guardan en línea). Útil para probar sin backend.
-   - "/api/imparable" -> usa tu base de datos real en Neon
-     (cuando la app está desplegada en Vercel; mismo dominio,
-     sin problemas de CORS).
-
-   Ver DEPLOY.md para el paso a paso.
+   Si alguna vez quieres forzar un modo, cambia API_URL a mano:
+     ""               -> demo
+     "/api/imparable" -> backend Neon
+   Ver DEPLOY.md.
    ========================================================= */
-window.IMPARABLE_CONFIG = {
-  API_URL: ""   // en producción (Vercel): "/api/imparable"
-};
+(function () {
+  var h = (location.hostname || '').toLowerCase();
+  var esLocal = h === 'localhost' || h === '127.0.0.1' || h === '' || location.protocol === 'file:';
+  window.IMPARABLE_CONFIG = {
+    API_URL: esLocal ? '' : '/api/imparable'
+  };
+})();
