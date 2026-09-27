@@ -115,7 +115,7 @@
       <!-- Equipos -->
       <div id="view-equipos" class="hide">
         <div class="lt-group-head"><span class="left" id="h-equipos"></span></div>
-        <p class="muted" style="font-size:12.5px;color:var(--light-dim);margin:0 4px 14px">Si a un secretario se le olvida el PIN, restablécelo aquí.</p>
+        <p class="muted" style="font-size:12.5px;color:var(--light-dim);margin:0 4px 14px">Asigna el líder de cada grupo y su código de acceso. Si alguien olvida su PIN o código, restablécelo aquí.</p>
         <div id="equipos-list"></div>
       </div>
 
@@ -442,15 +442,22 @@
     $('x-desc').value = ''; renderHistorial(); toast('Puntos otorgados · registrados en el historial');
   });
 
-  /* ---------- Equipos (reset de PIN) ---------- */
+  /* ---------- Equipos (PIN del secretario + líder) ---------- */
+  function liderInfo(e) {
+    const tieneCodigo = e.pin_lider || e.tiene_pin_lider;
+    const nombre = e.lider_nombre ? e.lider_nombre : 'Sin líder asignado';
+    const codigo = e.pin_lider ? 'código ' + e.pin_lider : (tieneCodigo ? 'código asignado' : 'sin código');
+    return `Líder: ${nombre} · ${codigo}`;
+  }
   function renderEquipos() {
     const list = API.todosLosEquipos();
     $('equipos-list').innerHTML = list.map(e => `
       <div class="team-row" data-team="${e.id}">
         <span class="tr-disc" style="${discStyle(e)}">${e.inicial}</span>
         <span class="tr-body"><span class="tr-name">${e.nombre}${e.activo?'':' · (inactivo)'}</span>
-          <span class="tr-pin">PIN: ${e.pin || '••••'} · ${e.miembros} miembros</span></span>
-        <button class="tr-edit" data-edit="${e.id}">Cambiar PIN</button>
+          <span class="tr-pin">PIN secretario: ${e.pin || '••••'} · ${e.miembros} miembros</span>
+          <span class="tr-pin">${liderInfo(e)}</span></span>
+        <button class="tr-edit" data-edit="${e.id}">Editar</button>
       </div>`).join('');
   }
   $('equipos-list').addEventListener('click', async (e) => {
@@ -458,19 +465,38 @@
     if (ed) {
       const id = ed.dataset.edit; const eq = API.equipo(id);
       const row = ed.closest('.team-row');
+      row.classList.add('team-row--edit');
       row.innerHTML = `<span class="tr-disc" style="${discStyle(eq)}">${eq.inicial}</span>
-        <span class="tr-body" style="display:flex;gap:8px;align-items:center">
-          <input class="input" id="newpin-${id}" inputmode="numeric" maxlength="4" value="${eq.pin || ''}" placeholder="Nuevo PIN" style="padding:8px 10px">
-          <button class="tr-edit" data-save="${id}" style="background:var(--azul-profundo);color:#fff;border-color:var(--azul-profundo)">Guardar</button>
-          <button class="tr-edit" data-cancel="1">Cancelar</button>
+        <span class="tr-body">
+          <span class="tr-name">${eq.nombre}</span>
+          <label class="tr-lbl">PIN del secretario</label>
+          <input class="input" id="newpin-${id}" inputmode="numeric" maxlength="4" value="${eq.pin || ''}" placeholder="4 dígitos (vacío = no cambiar)">
+          <label class="tr-lbl">Nombre del líder</label>
+          <input class="input" id="lidnom-${id}" value="${eq.lider_nombre || ''}" placeholder="Ej. Miriam Acosta">
+          <label class="tr-lbl">Código del líder</label>
+          <input class="input" id="lidpin-${id}" inputmode="numeric" maxlength="4" value="${eq.pin_lider || ''}" placeholder="4 dígitos (vacío = no cambiar)">
+          <span class="tr-actions">
+            <button class="tr-edit tr-edit--primary" data-save="${id}">Guardar</button>
+            <button class="tr-edit" data-cancel="1">Cancelar</button>
+          </span>
         </span>`;
       return;
     }
     const sv = e.target.closest('[data-save]');
     if (sv) {
-      const id = sv.dataset.save; const val = ($('newpin-'+id)||{}).value || '';
-      if (!/^\d{4}$/.test(val)) return toast('El PIN debe ser de 4 dígitos');
-      await API.actualizarEquipo(id, { pin: val }); renderEquipos(); toast('PIN actualizado');
+      const id = sv.dataset.save;
+      const pinSec = $('newpin-'+id).value.trim(), pinLid = $('lidpin-'+id).value.trim(), nomLid = $('lidnom-'+id).value.trim();
+      if (pinSec && !/^\d{4}$/.test(pinSec)) return toast('El PIN del secretario debe ser de 4 dígitos');
+      if (pinLid && !/^\d{4}$/.test(pinLid)) return toast('El código del líder debe ser de 4 dígitos');
+      if (pinSec && pinSec === pinLid) return toast('El secretario y el líder necesitan códigos distintos');
+      const cambios = { lider_nombre: nomLid };
+      if (pinSec) cambios.pin = pinSec;
+      if (pinLid) cambios.pin_lider = pinLid;
+      sv.disabled = true;
+      const res = await API.actualizarEquipo(id, cambios);
+      sv.disabled = false;
+      if (res && res.error) return toast(res.error);
+      renderEquipos(); toast('Equipo actualizado');
       return;
     }
     if (e.target.closest('[data-cancel]')) renderEquipos();

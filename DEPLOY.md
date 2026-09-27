@@ -87,3 +87,17 @@ el **código QR**.
   quieras.
 - **Seguridad:** la app pública (QR) no expone los PINs; la verificación se hace en
   el servidor. Comparte el acceso de directiva/secretario solo con quien corresponda.
+
+---
+
+## Migración — perfil de Líder (septiembre 2026)
+Antes de subir este cambio a GitHub, ejecuta esto **una vez** en el SQL Editor de Neon
+(si no, el servidor fallará al leer los equipos):
+
+```sql
+ALTER TABLE equipos   ADD COLUMN IF NOT EXISTS pin_lider    TEXT;
+ALTER TABLE equipos   ADD COLUMN IF NOT EXISTS lider_nombre TEXT;
+ALTER TABLE registros ADD COLUMN IF NOT EXISTS detalle      JSONB DEFAULT '{}'::jsonb;
+```
+
+Después, la directiva asigna nombre y código de cada líder en **Directiva › Equipos › Editar**.

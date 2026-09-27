@@ -55,6 +55,7 @@ export default async function handler(req, res) {
       const b = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
       switch (b.accion) {
         case 'verificar_pin_equipo':    return res.json(await verificarPinEquipo(b.pin));
+        case 'verificar_pin_lider':     return res.json(await verificarPinLider(b.pin));
         case 'verificar_pin_validador': return res.json({ ok: await verificarPinValidador(b.pin) });
         case 'crear_equipo':            return res.json(await crearEquipo(b));
         case 'actualizar_equipo':       return res.json(await actualizarEquipo(b));
@@ -88,13 +89,15 @@ function mapRegistro(r) {
     reto: { tipo: r.reto_tipo, cumplidos: r.reto_cumplidos, total: r.reto_total, cumplido: r.reto_cumplido, validada: r.reto_validada, puntos: r.reto_puntos },
     visita: { nombre: r.visita_nombre || '', validada: r.visita_validada, puntos: r.visita_puntos },
     logros: Array.isArray(r.logros) ? r.logros : [],
+    detalle: r.detalle && typeof r.detalle === 'object' ? r.detalle : {},
     total_puntos_semana: r.total_puntos
   };
 }
 
 async function snapshot() {
   const [eq, mi, regs, ret, ext, fb, hist] = await Promise.all([
-    sql`SELECT id,nombre,inicial,color,color_text,capacidad_max,activo,grito,versiculo FROM equipos`,
+    sql`SELECT id,nombre,inicial,color,color_text,capacidad_max,activo,grito,versiculo,lider_nombre,
+               (COALESCE(pin_lider,'') <> '') AS tiene_pin_lider FROM equipos`,
     sql`SELECT equipo_id,nombre,es_visita,veces_visita FROM miembros`,
     sql`SELECT * FROM registros`,
     sql`SELECT id,descripcion,tipo,fecha,activo FROM retos ORDER BY fecha`,
@@ -168,6 +171,17 @@ async function verificarPinEquipo(pin) {
   const r = await sql`SELECT id,nombre,inicial,color,color_text,grito,versiculo FROM equipos WHERE pin = ${String(pin)} AND activo = TRUE LIMIT 1`;
   return r[0] ? { ok: true, equipo: r[0] } : { ok: false };
 }
+async function verificarPinLider(pin) {
+  const r = await sql`SELECT id,nombre,inicial,color,color_text,grito,versiculo,lider_nombre FROM equipos WHERE pin_lider = ${String(pin)} AND activo = TRUE LIMIT 1`;
+  return r[0] ? { ok: true, equipo: r[0] } : { ok: false };
+}
+// Un PIN identifica a UNA persona/rol: no puede repetirse entre secretarios, líderes ni la directiva.
+async function pinEnUso(pin) {
+  pin = String(pin);
+  if (await verificarPinValidador(pin)) return true;
+  const r = await sql`SELECT 1 FROM equipos WHERE pin = ${pin} OR pin_lider = ${pin} LIMIT 1`;
+  return r.length > 0;
+}
 async function verificarPinValidador(pin) {
   const r = await sql`SELECT valor FROM config WHERE clave = 'pin_validador' LIMIT 1`;
   return !!r[0] && String(r[0].valor) === String(pin);
@@ -175,8 +189,7 @@ async function verificarPinValidador(pin) {
 
 /* ===================== Escrituras ===================== */
 async function crearEquipo(b) {
-  const dup = await sql`SELECT 1 FROM equipos WHERE pin = ${String(b.pin)} LIMIT 1`;
-  if (dup.length) return { error: 'Ese PIN ya está en uso por otro equipo' };
+  if (await pinEnUso(b.pin)) return { error: 'Ese PIN ya está en uso, elige otro' };
   const id = uid('eq');
   const inicial = (b.nombre || '?').charAt(0).toUpperCase();
   await sql`INSERT INTO equipos (id,nombre,inicial,color,color_text,pin,capacidad_max,activo,grito,versiculo,creado_secretario)
@@ -190,12 +203,18 @@ async function actualizarEquipo(b) {
   const cur = (await sql`SELECT * FROM equipos WHERE id = ${b.id} LIMIT 1`)[0];
   if (!cur) return { error: 'equipo no encontrado' };
   const v = (k, d) => (b[k] != null ? b[k] : d);
+  if (b.pin != null && String(b.pin) !== cur.pin && await pinEnUso(b.pin))
+    return { error: 'Ese PIN ya está en uso, elige otro' };
+  if (b.pin_lider != null && String(b.pin_lider) !== (cur.pin_lider || '') && await pinEnUso(b.pin_lider))
+    return { error: 'Ese código ya está en uso, elige otro' };
   await sql`UPDATE equipos SET
               nombre = ${v('nombre', cur.nombre)},
               color = ${v('color', cur.color)},
               grito = ${v('grito', cur.grito)},
               versiculo = ${v('versiculo', cur.versiculo)},
               pin = ${b.pin != null ? String(b.pin) : cur.pin},
+              pin_lider = ${b.pin_lider != null ? String(b.pin_lider) : cur.pin_lider},
+              lider_nombre = ${v('lider_nombre', cur.lider_nombre)},
               activo = ${b.activo != null ? b.activo : cur.activo}
             WHERE id = ${b.id}`;
   return { ok: true };
@@ -204,19 +223,22 @@ async function actualizarEquipo(b) {
 async function registrarSecretario(b) {
   const reto = await retoVigente();
   const id = uid('reg');
+  // Quién estuvo, quién llegó a tiempo y quién cumplió el reto (base de los indicadores del líder).
+  const lista = (x) => (Array.isArray(x) ? x.map(String) : []);
+  const detalle = JSON.stringify({ presentes: lista(b.detalle && b.detalle.presentes), a_tiempo: lista(b.detalle && b.detalle.a_tiempo), reto: lista(b.detalle && b.detalle.reto), miembros: lista(b.detalle && b.detalle.miembros) });
   const logros = JSON.stringify((b.logros || []).map(l => ({ tipo: l.tipo, descripcion: l.descripcion || '', porcentaje: l.porcentaje, confirmado: false })));
   await sql`INSERT INTO registros
     (id,equipo_id,fecha,hora,estado,
      asis_presentes,asis_total,asis_validada,
      punt_a_tiempo,punt_total,punt_validada,
      reto_tipo,reto_cumplidos,reto_total,reto_cumplido,reto_validada,
-     visita_nombre,visita_validada, logros)
+     visita_nombre,visita_validada, logros, detalle)
     VALUES
     (${id}, ${b.equipo_id}, ${todayISO()}, ${nowHora()}, 'pendiente',
      ${b.presentes}, ${b.total}, FALSE,
      ${b.a_tiempo}, ${b.presentes}, FALSE,
      ${(reto && reto.tipo) || b.reto_tipo}, ${b.reto_cumplidos || 0}, ${b.total}, ${!!b.reto_cumplido}, FALSE,
-     ${b.visita_nombre || ''}, FALSE, ${logros}::jsonb)`;
+     ${b.visita_nombre || ''}, FALSE, ${logros}::jsonb, ${detalle}::jsonb)`;
   return { ok: true, id };
 }
 

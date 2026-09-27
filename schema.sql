@@ -15,7 +15,9 @@ CREATE TABLE IF NOT EXISTS equipos (
   activo        BOOLEAN DEFAULT TRUE,
   grito         TEXT,
   versiculo     TEXT,
-  creado_secretario BOOLEAN DEFAULT FALSE
+  creado_secretario BOOLEAN DEFAULT FALSE,
+  pin_lider     TEXT,
+  lider_nombre  TEXT
 );
 
 CREATE TABLE IF NOT EXISTS miembros (
@@ -39,6 +41,7 @@ CREATE TABLE IF NOT EXISTS registros (
   reto_validada   BOOLEAN DEFAULT FALSE, reto_puntos INT,
   visita_nombre   TEXT, visita_validada BOOLEAN DEFAULT FALSE, visita_puntos INT,
   logros          JSONB DEFAULT '[]'::jsonb,
+  detalle         JSONB DEFAULT '{}'::jsonb,
   total_puntos    INT,
   enviado         TIMESTAMPTZ DEFAULT now(),
   validado_en     TIMESTAMPTZ
@@ -87,6 +90,12 @@ CREATE TABLE IF NOT EXISTS config (
   clave TEXT PRIMARY KEY,
   valor TEXT
 );
+
+-- ---------- Migración: perfil de Líder (sept 2026) ----------
+-- Seguro de ejecutar en una base que ya existe: solo agrega lo que falta.
+ALTER TABLE equipos   ADD COLUMN IF NOT EXISTS pin_lider    TEXT;
+ALTER TABLE equipos   ADD COLUMN IF NOT EXISTS lider_nombre TEXT;
+ALTER TABLE registros ADD COLUMN IF NOT EXISTS detalle      JSONB DEFAULT '{}'::jsonb;
 
 -- ---------- Datos iniciales (solo si están vacías) ----------
 INSERT INTO config (clave, valor) VALUES ('pin_validador', '2468')

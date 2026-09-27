@@ -14,7 +14,7 @@
 (function () {
   'use strict';
 
-  const STORE_KEY = 'imparable_v2';
+  const STORE_KEY = 'imparable_v3';
 
   const COLORES = [
     { hex: '#D4A017', nombre: 'Dorado' }, { hex: '#1A3A8F', nombre: 'Azul' },
@@ -29,12 +29,12 @@
     return {
       config: { pin_validador: '2468' },
       equipos: [
-        { id: 'aguilas',    nombre: 'Águilas',    inicial: 'A', color: '#D4A017', pin: '1001', capacidad_max: 7, activo: true, grito: '¡Águilas, alto vuelo!', versiculo: 'Isaías 40:31' },
-        { id: 'centinelas', nombre: 'Centinelas', inicial: 'C', color: '#dfe6f2', color_text:'#0B1F4B', pin: '1002', capacidad_max: 7, activo: true, grito: '¡Centinelas en guardia!', versiculo: 'Salmo 127:1' },
-        { id: 'leones',     nombre: 'Leones',     inicial: 'L', color: '#c08a5a', pin: '1003', capacidad_max: 7, activo: true, grito: '¡Leones, rugido de fe!', versiculo: 'Proverbios 28:1' },
-        { id: 'vencedores', nombre: 'Vencedores', inicial: 'V', color: '#2EB872', pin: '1004', capacidad_max: 7, activo: true, grito: '¡Más que vencedores!', versiculo: 'Romanos 8:37' },
-        { id: 'embajadores',nombre: 'Embajadores',inicial: 'E', color: '#8E5BD0', pin: '1005', capacidad_max: 7, activo: true, grito: '¡Embajadores del Rey!', versiculo: '2 Corintios 5:20' },
-        { id: 'centella',   nombre: 'Centella',   inicial: 'C', color: '#E07B39', pin: '1006', capacidad_max: 7, activo: true, grito: '¡Centella que enciende!', versiculo: 'Mateo 5:16' }
+        { id: 'aguilas',    nombre: 'Águilas',    inicial: 'A', color: '#D4A017', pin: '1001', capacidad_max: 7, activo: true, grito: '¡Águilas, alto vuelo!', versiculo: 'Isaías 40:31' , pin_lider: '3001', lider_nombre: 'Rebeca Salinas' },
+        { id: 'centinelas', nombre: 'Centinelas', inicial: 'C', color: '#dfe6f2', color_text:'#0B1F4B', pin: '1002', capacidad_max: 7, activo: true, grito: '¡Centinelas en guardia!', versiculo: 'Salmo 127:1' , pin_lider: '3002', lider_nombre: 'Jonatán Ríos' },
+        { id: 'leones',     nombre: 'Leones',     inicial: 'L', color: '#c08a5a', pin: '1003', capacidad_max: 7, activo: true, grito: '¡Leones, rugido de fe!', versiculo: 'Proverbios 28:1' , pin_lider: '3003', lider_nombre: 'Miriam Acosta' },
+        { id: 'vencedores', nombre: 'Vencedores', inicial: 'V', color: '#2EB872', pin: '1004', capacidad_max: 7, activo: true, grito: '¡Más que vencedores!', versiculo: 'Romanos 8:37' , pin_lider: '3004', lider_nombre: 'Samuel Paredes' },
+        { id: 'embajadores',nombre: 'Embajadores',inicial: 'E', color: '#8E5BD0', pin: '1005', capacidad_max: 7, activo: true, grito: '¡Embajadores del Rey!', versiculo: '2 Corintios 5:20' , pin_lider: '3005', lider_nombre: 'Ester Villalobos' },
+        { id: 'centella',   nombre: 'Centella',   inicial: 'C', color: '#E07B39', pin: '1006', capacidad_max: 7, activo: true, grito: '¡Centella que enciende!', versiculo: 'Mateo 5:16' , pin_lider: '3006', lider_nombre: 'Natán Herrera' }
       ],
       miembros: {
         leones: ['Daniel Ortega','Sara Méndez','Josué Rivas','Raquel Lara','Esteban Cruz','Noemí Soto','Caleb Díaz'],
@@ -64,8 +64,13 @@
           puntualidad: { a_tiempo: 5, total: 6, validada: false },
           reto: { tipo: 'individual', cumplidos: 5, total: 7, validada: false },
           visita: { nombre: '', validada: false },
-          logros: [ { tipo: 'colaboracion', descripcion: 'Ayudamos con la limpieza del templo', confirmado: false } ]
+          logros: [ { tipo: 'colaboracion', descripcion: 'Ayudamos con la limpieza del templo', confirmado: false } ],
+          detalle: { miembros: ['Daniel Ortega','Sara Méndez','Josué Rivas','Raquel Lara','Esteban Cruz','Noemí Soto','Caleb Díaz'],
+                     presentes: ['Daniel Ortega','Sara Méndez','Josué Rivas','Raquel Lara','Esteban Cruz','Noemí Soto'],
+                     a_tiempo: ['Daniel Ortega','Sara Méndez','Josué Rivas','Raquel Lara','Noemí Soto'],
+                     reto: ['Daniel Ortega','Sara Méndez','Josué Rivas','Raquel Lara','Noemí Soto'] }
         },
+        ...historialDemoLeones(),
         {
           id: 'reg-aguilas-1', equipo_id: 'aguilas', fecha: hoyISO(), hora: '7:20pm', estado: 'pendiente',
           asistencia: { presentes: 5, total: 6, validada: false },
@@ -80,6 +85,32 @@
       feedback: [],
       historial: []
     };
+  }
+
+  // Semanas pasadas ya validadas de Leones, con detalle por persona, para que el
+  // panel del líder tenga datos que mostrar en modo demo.
+  function historialDemoLeones() {
+    const M = ['Daniel Ortega','Sara Méndez','Josué Rivas','Raquel Lara','Esteban Cruz','Noemí Soto','Caleb Díaz'];
+    const semanas = [ // [presentes, a_tiempo, reto] por índice de integrante
+      [[0,1,2,3,4,5,6],[0,1,2,3,5,6],[0,1,2,3,4,5]],
+      [[0,1,2,3,5,6],[0,1,3,5],[0,1,2,3,5]],
+      [[0,1,2,3,4,5],[0,1,2,3,5],[0,1,3,5]],
+      [[0,1,2,3,5],[0,1,2,3],[0,1,2,3,5]],
+      [[0,1,3,4,5],[0,1,3,5],[0,1,3]]
+    ];
+    return semanas.map((w, i) => {
+      const f = new Date(); f.setDate(f.getDate() - 7 * (semanas.length - i));
+      const [pr, at, re] = w.map(ix => ix.map(k => M[k]));
+      return {
+        id: 'reg-leones-h' + i, equipo_id: 'leones', fecha: f.toISOString().slice(0, 10), hora: '7:10pm', estado: 'validado',
+        asistencia: { presentes: pr.length, total: M.length, validada: true, puntos: pAsistencia(pr.length, M.length) },
+        puntualidad: { a_tiempo: at.length, total: pr.length, validada: true, puntos: pPuntualidad(at.length, pr.length) },
+        reto: { tipo: 'individual', cumplidos: re.length, total: M.length, validada: true, puntos: 0 },
+        visita: { nombre: '', validada: true, puntos: 0 }, logros: [],
+        detalle: { miembros: M, presentes: pr, a_tiempo: at, reto: re },
+        total_puntos_semana: pAsistencia(pr.length, M.length) + pPuntualidad(at.length, pr.length)
+      };
+    });
   }
 
   function hoyISO() { try { return new Date().toISOString().slice(0, 10); } catch (e) { return '2026-01-01'; } }
@@ -171,11 +202,15 @@
     catch (e) { return '—'; }
   }
 
+  function pinEnUsoLocal(pin) {
+    const d = db();
+    return d.config.pin_validador === pin || d.equipos.some(e => e.pin === pin || e.pin_lider === pin);
+  }
   function _crearEquipo({ nombre, pin, color, grito, versiculo, miembros, capacidad_max }) {
     const d = db();
     let id = (nombre || '').toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g, '').slice(0, 14) || ('eq' + d.equipos.length);
     if (d.equipos.some(e => e.id === id)) id += '-' + next();
-    if (d.equipos.some(e => e.pin === pin)) return { error: 'Ese PIN ya está en uso por otro equipo' };
+    if (pinEnUsoLocal(pin)) return { error: 'Ese PIN ya está en uso, elige otro' };
     const eq = { id, nombre, inicial: (nombre || '?').charAt(0).toUpperCase(), color: color || '#1A3A8F', pin, capacidad_max: capacidad_max || 7, activo: true, grito: grito || '', versiculo: versiculo || '', creado_por_secretario: true };
     d.equipos.push(eq); d.miembros[id] = (miembros || []).filter(Boolean);
     d.base_puntos[id] = { semanal: 0, mensual: 0, acumulado: 0 };
@@ -183,6 +218,8 @@
   }
   function _actualizarEquipo(id, cambios) {
     const d = db(); const eq = d.equipos.find(e => e.id === id); if (!eq) return null;
+    if (cambios.pin != null && cambios.pin !== eq.pin && pinEnUsoLocal(cambios.pin)) return { error: 'Ese PIN ya está en uso, elige otro' };
+    if (cambios.pin_lider != null && cambios.pin_lider !== (eq.pin_lider || '') && pinEnUsoLocal(cambios.pin_lider)) return { error: 'Ese código ya está en uso, elige otro' };
     Object.assign(eq, cambios); if (cambios.miembros) d.miembros[id] = cambios.miembros.filter(Boolean);
     persist(); return eq;
   }
@@ -194,7 +231,8 @@
       puntualidad: { a_tiempo: payload.a_tiempo, total: payload.presentes, validada: false },
       reto: { tipo: reto.tipo || payload.reto_tipo, cumplidos: payload.reto_cumplidos, total: payload.total, cumplido: payload.reto_cumplido, validada: false },
       visita: { nombre: payload.visita_nombre || '', validada: false },
-      logros: (payload.logros || []).map(l => ({ tipo: l.tipo, descripcion: l.descripcion || '', porcentaje: l.porcentaje, confirmado: false }))
+      logros: (payload.logros || []).map(l => ({ tipo: l.tipo, descripcion: l.descripcion || '', porcentaje: l.porcentaje, confirmado: false })),
+      detalle: payload.detalle || {}
     };
     d.registros.push(reg); persist(); return reg;
   }
@@ -259,6 +297,54 @@
     (d.feedback = d.feedback || []).push(fb); persist(); return fb;
   }
 
+  /* ============ Indicadores del líder ============ */
+  // Se calculan con el detalle por persona que envía el secretario (quién asistió,
+  // quién llegó a tiempo, quién cumplió el reto). Registros viejos sin detalle
+  // solo cuentan para el promedio del grupo.
+  const pct = (n, t) => (t ? Math.round((n / t) * 100) : null);
+  function estadoMiembro(m) {
+    if (!m.reuniones) return 'sin_datos';
+    if (m.racha_ausencias >= 2 || (m.reuniones >= 2 && m.asistencia < 50)) return 'atencion';
+    if (m.asistencia < 75 || (m.puntualidad != null && m.puntualidad < 60)) return 'seguimiento';
+    return 'bien';
+  }
+  function indicadores(d, equipoId) {
+    const regs = d.registros.filter(r => r.equipo_id === equipoId).slice()
+      .sort((a, b) => (a.fecha + (a.id || '')).localeCompare(b.fecha + (b.id || '')));
+    const conDetalle = regs.filter(r => r.detalle && Array.isArray(r.detalle.presentes) && r.detalle.presentes.length + (r.detalle.miembros || []).length > 0);
+    const miembros = (d.miembros[equipoId] || []).map(nombre => {
+      // Solo cuentan las reuniones en las que la persona ya era parte del equipo.
+      const suyas = conDetalle.filter(r => !(r.detalle.miembros || []).length || r.detalle.miembros.includes(nombre));
+      const asistio = suyas.map(r => r.detalle.presentes.includes(nombre));
+      const presentes = asistio.filter(Boolean).length;
+      const aTiempo = suyas.filter(r => r.detalle.presentes.includes(nombre) && (r.detalle.a_tiempo || []).includes(nombre)).length;
+      const conRetoInd = suyas.filter(r => r.reto && r.reto.tipo === 'individual');
+      const retos = conRetoInd.filter(r => (r.detalle.reto || []).includes(nombre)).length;
+      let racha = 0; for (let i = asistio.length - 1; i >= 0 && !asistio[i]; i--) racha++;
+      const m = { nombre, reuniones: suyas.length, presentes, asistencia: pct(presentes, suyas.length),
+        puntualidad: pct(aTiempo, presentes), retos, retos_total: conRetoInd.length, reto: pct(retos, conRetoInd.length),
+        racha_ausencias: racha, ultimas: asistio.slice(-6) };
+      m.estado = estadoMiembro(m);
+      return m;
+    });
+    const sum = (f) => regs.reduce((s, r) => s + (f(r) || 0), 0);
+    const indRegs = regs.filter(r => r.reto && r.reto.tipo === 'individual');
+    const ranking = API.ranking('acumulado');
+    const fila = ranking.find(f => f.id === equipoId) || null;
+    return {
+      reuniones: regs.length,
+      grupo: {
+        asistencia: pct(sum(r => r.asistencia.presentes), sum(r => r.asistencia.total)),
+        puntualidad: pct(sum(r => r.puntualidad.a_tiempo), sum(r => r.puntualidad.total)),
+        reto: pct(indRegs.reduce((s, r) => s + (r.reto.cumplidos || 0), 0), indRegs.reduce((s, r) => s + (r.reto.total || 0), 0))
+      },
+      semanas: regs.slice(-8).map(r => ({ fecha: r.fecha, presentes: r.asistencia.presentes, total: r.asistencia.total, estado: r.estado })),
+      miembros,
+      atencion: miembros.filter(m => m.estado === 'atencion'),
+      ranking, posicion: fila ? fila.pos : null, puntos: fila ? fila.puntos : 0
+    };
+  }
+
   /* ============================ API pública ============================ */
   const API = {
     /* ---- init ---- */
@@ -312,12 +398,18 @@
     feedbackList() { return (db().feedback || []).slice().reverse(); },
     feedbackResumen() { const list = db().feedback || []; const n = list.length; const avg = n ? (list.reduce((s, f) => s + (f.rating || 0), 0) / n) : 0; return { total: n, promedio: Math.round(avg * 10) / 10 }; },
 
+    indicadoresEquipo(equipoId) { return indicadores(db(), equipoId); },
+
     calc: { asistencia: pAsistencia, puntualidad: pPuntualidad, reto: pReto, visita: (n) => pVisita(n, db()), actividad: pActividad, logro: pLogro },
 
     /* ---- login (async) ---- */
     async verificarPinEquipo(pin) {
       if (backendMode()) { const r = await remotePost('verificar_pin_equipo', { pin }); return (r && r.ok) ? r.equipo : null; }
       return db().equipos.find(e => e.pin === pin && e.activo) || null;
+    },
+    async verificarPinLider(pin) {
+      if (backendMode()) { const r = await remotePost('verificar_pin_lider', { pin }); return (r && r.ok) ? r.equipo : null; }
+      return db().equipos.find(e => e.pin_lider && e.pin_lider === pin && e.activo) || null;
     },
     async verificarPinValidador(pin) {
       if (backendMode()) { const r = await remotePost('verificar_pin_validador', { pin }); return !!(r && r.ok); }
