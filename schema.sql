@@ -102,6 +102,20 @@ CREATE TABLE IF NOT EXISTS interacciones (
   creado      TIMESTAMPTZ DEFAULT now()
 );
 
+-- Actividades internas del equipo (privado): oración diaria en grupo (una por
+-- día) y estudio/actividad de crecimiento (mínimo una por semana).
+CREATE TABLE IF NOT EXISTS actividades_equipo (
+  id            TEXT PRIMARY KEY,
+  equipo_id     TEXT,
+  tipo          TEXT,        -- oracion | crecimiento
+  subtipo       TEXT,        -- estudio | actividad (solo crecimiento)
+  descripcion   TEXT,
+  fecha         DATE,
+  participantes JSONB DEFAULT '[]'::jsonb,
+  creado        TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE equipos ADD COLUMN IF NOT EXISTS hora_oracion TEXT;  -- hora fija de la llamada de oración (HH:MM)
+
 CREATE TABLE IF NOT EXISTS config (
   clave TEXT PRIMARY KEY,
   valor TEXT

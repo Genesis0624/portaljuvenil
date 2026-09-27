@@ -14,7 +14,7 @@
 (function () {
   'use strict';
 
-  const STORE_KEY = 'imparable_v4';
+  const STORE_KEY = 'imparable_v5';
 
   const COLORES = [
     { hex: '#D4A017', nombre: 'Dorado' }, { hex: '#1A3A8F', nombre: 'Azul' },
@@ -31,7 +31,7 @@
       equipos: [
         { id: 'aguilas',    nombre: 'Águilas',    inicial: 'A', color: '#D4A017', pin: '1001', capacidad_max: 7, activo: true, grito: '¡Águilas, alto vuelo!', versiculo: 'Isaías 40:31' , pin_lider: '3001', lider_nombre: 'Rebeca Salinas' },
         { id: 'centinelas', nombre: 'Centinelas', inicial: 'C', color: '#dfe6f2', color_text:'#0B1F4B', pin: '1002', capacidad_max: 7, activo: true, grito: '¡Centinelas en guardia!', versiculo: 'Salmo 127:1' , pin_lider: '3002', lider_nombre: 'Jonatán Ríos' },
-        { id: 'leones',     nombre: 'Leones',     inicial: 'L', color: '#c08a5a', pin: '1003', capacidad_max: 7, activo: true, grito: '¡Leones, rugido de fe!', versiculo: 'Proverbios 28:1' , pin_lider: '3003', lider_nombre: 'Miriam Acosta' },
+        { id: 'leones',     nombre: 'Leones',     inicial: 'L', color: '#c08a5a', pin: '1003', capacidad_max: 7, activo: true, grito: '¡Leones, rugido de fe!', versiculo: 'Proverbios 28:1' , pin_lider: '3003', lider_nombre: 'Miriam Acosta', hora_oracion: '21:00' },
         { id: 'vencedores', nombre: 'Vencedores', inicial: 'V', color: '#2EB872', pin: '1004', capacidad_max: 7, activo: true, grito: '¡Más que vencedores!', versiculo: 'Romanos 8:37' , pin_lider: '3004', lider_nombre: 'Samuel Paredes' },
         { id: 'embajadores',nombre: 'Embajadores',inicial: 'E', color: '#8E5BD0', pin: '1005', capacidad_max: 7, activo: true, grito: '¡Embajadores del Rey!', versiculo: '2 Corintios 5:20' , pin_lider: '3005', lider_nombre: 'Ester Villalobos' },
         { id: 'centella',   nombre: 'Centella',   inicial: 'C', color: '#E07B39', pin: '1006', capacidad_max: 7, activo: true, grito: '¡Centella que enciende!', versiculo: 'Mateo 5:16' , pin_lider: '3006', lider_nombre: 'Natán Herrera' }
@@ -84,9 +84,20 @@
       puntos_extra: [],
       feedback: [],
       historial: [],
-      interacciones: interaccionesDemo()
+      interacciones: interaccionesDemo(),
+      actividades: actividadesDemo()
     };
   }
+  function actividadesDemo() {
+    const M = ['Daniel Ortega','Sara Méndez','Josué Rivas','Raquel Lara','Esteban Cruz','Noemí Soto','Caleb Díaz'];
+    const dia = (n) => { const f = new Date(); f.setDate(f.getDate() - n); return fechaLocal(f); };
+    const orac = (n, idx) => ({ id: 'act-o' + n, equipo_id: 'leones', tipo: 'oracion', subtipo: '', descripcion: '', fecha: dia(n), participantes: idx.map(i => M[i]) });
+    return [
+      orac(0, [0,1,2,3,5]), orac(1, [0,1,3,5]), orac(2, [0,1,2,3,4,5]), orac(4, [0,1,3]), orac(5, [0,1,2,3,5]),
+      { id: 'act-c1', equipo_id: 'leones', tipo: 'crecimiento', subtipo: 'estudio', descripcion: 'Estudio de Filipenses 4 por videollamada', fecha: dia(3), participantes: [M[0],M[1],M[2],M[3],M[5]] }
+    ];
+  }
+  function fechaLocal(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   function interaccionesDemo() {
     const dia = (n) => { const f = new Date(); f.setDate(f.getDate() - n); return f.toISOString().slice(0, 10); };
     const base = { equipo_id: 'leones', lider: 'Miriam Acosta', ayuda: '', estado: '', atendida_en: null };
@@ -308,6 +319,39 @@
     return (db().interacciones || []).filter(i => !equipoId || i.equipo_id === equipoId)
       .slice().sort((a, b) => (b.fecha + b.id).localeCompare(a.fecha + a.id));
   }
+  function _datosLider(eq) {
+    const d = db();
+    return { ok: true, interacciones: _interaccionesDe(eq.id),
+      actividades: (d.actividades || []).filter(a => a.equipo_id === eq.id).slice().sort((a, b) => (b.fecha + b.id).localeCompare(a.fecha + a.id)),
+      hora_oracion: eq.hora_oracion || '' };
+  }
+  function _datosDirectiva() {
+    const d = db(); const horas = {}; d.equipos.forEach(e => { if (e.hora_oracion) horas[e.id] = e.hora_oracion; });
+    return { ok: true, interacciones: _interaccionesDe(null), actividades: (d.actividades || []).slice(), horas_oracion: horas };
+  }
+  function _registrarActividad(pin, p) {
+    const d = db(); const eq = _equipoDeLider(pin); if (!eq) return { error: 'código de líder inválido' };
+    if (!['oracion', 'crecimiento'].includes(p.tipo)) return { error: 'tipo de actividad inválido' };
+    if (p.tipo === 'crecimiento' && !(p.descripcion || '').trim()) return { error: 'describe la actividad' };
+    const nombres = d.miembros[eq.id] || [];
+    const fecha = p.fecha || fechaLocal(new Date());
+    d.actividades = d.actividades || [];
+    if (p.tipo === 'oracion') d.actividades = d.actividades.filter(a => !(a.equipo_id === eq.id && a.tipo === 'oracion' && a.fecha === fecha));
+    d.actividades.push({ id: 'act-' + Date.now() + '-' + next(), equipo_id: eq.id, tipo: p.tipo,
+      subtipo: p.tipo === 'crecimiento' ? (p.subtipo === 'estudio' ? 'estudio' : 'actividad') : '',
+      descripcion: (p.descripcion || '').trim(), fecha, participantes: (p.participantes || []).filter(n => nombres.includes(n)) });
+    persist(); return _datosLider(eq);
+  }
+  function _eliminarActividad(pin, id) {
+    const d = db(); const eq = _equipoDeLider(pin); if (!eq) return { error: 'código de líder inválido' };
+    d.actividades = (d.actividades || []).filter(a => !(a.id === id && a.equipo_id === eq.id));
+    persist(); return _datosLider(eq);
+  }
+  function _fijarHoraOracion(pin, hora) {
+    const eq = _equipoDeLider(pin); if (!eq) return { error: 'código de líder inválido' };
+    eq.hora_oracion = /^\d{2}:\d{2}$/.test(hora || '') ? hora : '';
+    persist(); return _datosLider(eq);
+  }
   function _equipoDeLider(pin) { return db().equipos.find(e => e.pin_lider && e.pin_lider === pin && e.activo) || null; }
   function _registrarInteraccion(pin, p) {
     const d = db(); const eq = _equipoDeLider(pin); if (!eq) return { error: 'código de líder inválido' };
@@ -317,14 +361,14 @@
     (d.interacciones = d.interacciones || []).push({ id: 'int-' + Date.now() + '-' + next(), equipo_id: eq.id, miembro: p.miembro, tipo: p.tipo,
       nota: (p.nota || '').trim(), ayuda: (p.ayuda || '').trim(), estado: p.tipo === 'necesidad' ? 'abierta' : '',
       fecha: p.fecha || hoyISO(), lider: eq.lider_nombre || 'Líder', atendida_en: null });
-    persist(); return { ok: true, interacciones: _interaccionesDe(eq.id) };
+    persist(); return _datosLider(eq);
   }
   function _actualizarInteraccion(pin, id, estado) {
     const d = db(); const it = (d.interacciones || []).find(i => i.id === id); if (!it) return { error: 'registro no encontrado' };
     const eq = _equipoDeLider(pin); const esDirectiva = !eq && d.config.pin_validador === pin;
     if (!esDirectiva && !(eq && eq.id === it.equipo_id)) return { error: 'sin permiso' };
     it.estado = estado === 'atendida' ? 'atendida' : 'abierta'; it.atendida_en = it.estado === 'atendida' ? hoyISO() : null;
-    persist(); return { ok: true, interacciones: _interaccionesDe(esDirectiva ? null : eq.id) };
+    persist(); return esDirectiva ? _datosDirectiva() : _datosLider(eq);
   }
   function _enviarFeedback({ rating, comentario }) {
     const d = db(); const fb = { id: 'fb-' + next(), rating: rating || 0, comentario: (comentario || '').trim(), fecha: hoyISO() };
@@ -395,6 +439,31 @@
       necesidades_abiertas: suyas.filter(i => i.tipo === 'necesidad' && i.estado === 'abierta') };
   }
 
+  /* ============ Vida del equipo (oración diaria + crecimiento) ============ */
+  // Semana de domingo a sábado (igual que el ranking semanal).
+  function vidaEquipo(d, equipoId, actividades) {
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    const inicio = new Date(hoy); inicio.setDate(hoy.getDate() - hoy.getDay());
+    const dias = Array.from({ length: 7 }, (_, i) => { const f = new Date(inicio); f.setDate(inicio.getDate() + i); return fechaLocal(f); });
+    const hoyStr = fechaLocal(hoy);
+    const suyas = (actividades || []).filter(a => a.equipo_id === equipoId);
+    const semana = suyas.filter(a => a.fecha >= dias[0] && a.fecha <= dias[6]);
+    const oraciones = semana.filter(a => a.tipo === 'oracion');
+    const crecimiento = semana.filter(a => a.tipo === 'crecimiento');
+    const porMiembro = {};
+    (d.miembros[equipoId] || []).forEach(n => {
+      porMiembro[n] = { oraciones: oraciones.filter(a => a.participantes.includes(n)).length,
+                        crecimiento: crecimiento.filter(a => a.participantes.includes(n)).length };
+    });
+    return {
+      dias: dias.map(f => ({ fecha: f, futuro: f > hoyStr, hoy: f === hoyStr, oracion: oraciones.find(a => a.fecha === f) || null })),
+      dias_transcurridos: dias.filter(f => f <= hoyStr).length,
+      oraciones: oraciones.length, oracion_hoy: oraciones.find(a => a.fecha === hoyStr) || null,
+      crecimiento, por_miembro: porMiembro,
+      historial: suyas.slice(0, 12)
+    };
+  }
+
   /* ============================ API pública ============================ */
   const API = {
     /* ---- init ---- */
@@ -450,16 +519,33 @@
 
     indicadoresEquipo(equipoId) { return indicadores(db(), equipoId); },
     seguimientoEquipo(equipoId, interacciones) { return seguimiento(db(), equipoId, interacciones); },
+    vidaEquipo(equipoId, actividades) { return vidaEquipo(db(), equipoId, actividades); },
+    hoyLocal() { return fechaLocal(new Date()); },
     tipoInteraccionLabel: (t) => ({ visita: 'Visita', contacto: 'Contacto', necesidad: 'Necesidad identificada' }[t] || t),
 
     /* ---- seguimiento privado (requiere código de líder o PIN de directiva) ---- */
-    async interaccionesLider(pin) {
-      if (backendMode()) { const r = await remotePost('interacciones_lider', { pin }); return (r && r.ok) ? r.interacciones : []; }
-      return _equipoDeLider(pin) ? _interaccionesDe(_equipoDeLider(pin).id) : [];
+    // Devuelven { interacciones, actividades, hora_oracion | horas_oracion }.
+    async datosLider(pin) {
+      const vacio = { interacciones: [], actividades: [], hora_oracion: '' };
+      if (backendMode()) { const r = await remotePost('interacciones_lider', { pin }); return (r && r.ok) ? r : vacio; }
+      return _equipoDeLider(pin) ? _datosLider(_equipoDeLider(pin)) : vacio;
     },
-    async interaccionesDirectiva(pin) {
-      if (backendMode()) { const r = await remotePost('interacciones_directiva', { pin }); return (r && r.ok) ? r.interacciones : []; }
-      return db().config.pin_validador === pin ? _interaccionesDe(null) : [];
+    async datosDirectiva(pin) {
+      const vacio = { interacciones: [], actividades: [], horas_oracion: {} };
+      if (backendMode()) { const r = await remotePost('interacciones_directiva', { pin }); return (r && r.ok) ? r : vacio; }
+      return db().config.pin_validador === pin ? _datosDirectiva() : vacio;
+    },
+    async registrarActividad(pin, payload) {
+      if (backendMode()) return remotePost('registrar_actividad', Object.assign({ pin }, payload));
+      return _registrarActividad(pin, payload);
+    },
+    async eliminarActividad(pin, id) {
+      if (backendMode()) return remotePost('eliminar_actividad', { pin, id });
+      return _eliminarActividad(pin, id);
+    },
+    async fijarHoraOracion(pin, hora) {
+      if (backendMode()) return remotePost('fijar_hora_oracion', { pin, hora });
+      return _fijarHoraOracion(pin, hora);
     },
     async registrarInteraccion(pin, payload) {
       if (backendMode()) return remotePost('registrar_interaccion', Object.assign({ pin }, payload));

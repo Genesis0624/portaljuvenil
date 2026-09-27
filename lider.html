@@ -39,14 +39,16 @@
     <div class="lt-scroll">
       <div class="grupo-card" id="grupo-card"></div>
 
-      <div class="lt-segment" id="seg">
+      <div class="lt-segment lt-segment--4" id="seg">
         <button class="is-active" data-view="resumen">Resumen</button>
         <button data-view="integrantes">Integrantes</button>
-        <button data-view="comparacion">Comparación</button>
+        <button data-view="equipo">En equipo</button>
+        <button data-view="comparacion">Ranking</button>
       </div>
 
       <div id="view-resumen"></div>
       <div id="view-integrantes" class="hide"></div>
+      <div id="view-equipo" class="hide"></div>
       <div id="view-comparacion" class="hide"></div>
     </div>
   </div>
@@ -85,6 +87,35 @@
     </div>
   </form>
 </div>
+<!-- ====== Registrar oración / crecimiento ====== -->
+<div class="modal-bg" id="act-modal">
+  <form class="modal seg-form" id="act-form" autocomplete="off">
+    <div class="modal-tt" id="af-title">Actividad</div>
+    <p class="sf-sub" id="af-sub"></p>
+    <div class="af-crec">
+      <div class="sf-opts" id="af-opts">
+        <label class="sf-opt"><input type="radio" name="subtipo" value="estudio" checked><span><b>Estudio</b><small>Bíblico, devocional, un libro, un tema</small></span></label>
+        <label class="sf-opt"><input type="radio" name="subtipo" value="actividad"><span><b>Actividad</b><small>Cualquier actividad juntos, por mínima que sea</small></span></label>
+      </div>
+      <div class="field">
+        <label for="af-desc">¿Qué hicieron?</label>
+        <textarea class="input" id="af-desc" rows="2" placeholder="Ej. Estudiamos Filipenses 4 por videollamada"></textarea>
+      </div>
+    </div>
+    <div class="field">
+      <label for="af-fecha">Fecha</label>
+      <input class="input" type="date" id="af-fecha">
+    </div>
+    <div class="field">
+      <label class="af-part-head">¿Quiénes participaron? <button type="button" class="af-all" id="af-all">Todos / ninguno</button></label>
+      <div id="af-part"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn--gold" type="submit" id="af-save">Guardar</button>
+      <button class="btn btn--ghost" type="button" id="af-cancel">Cancelar</button>
+    </div>
+  </form>
+</div>
 <div class="toast" id="toast"></div>
 
 <script src="config.js"></script>
@@ -107,10 +138,11 @@
   $('main-back').innerHTML = ICON.back;
   $('sf-lock').innerHTML = ICON.lock;
   $('pin-back').addEventListener('click', () => location.href = 'acceso.html');
-  $('main-back').addEventListener('click', () => { pin=''; codigo=''; inter=[]; paintDots(); $('screen-main').classList.add('hide'); $('screen-pin').classList.remove('hide'); });
+  $('main-back').addEventListener('click', () => { pin=''; codigo=''; aplicarDatos({}); paintDots(); $('screen-main').classList.add('hide'); $('screen-pin').classList.remove('hide'); });
 
   /* ---------- PIN ---------- */
-  let pin = '', codigo = '', equipo = null, inter = [];
+  let pin = '', codigo = '', equipo = null, inter = [], acts = [], horaOracion = '';
+  function aplicarDatos(r) { inter = r.interacciones || []; acts = r.actividades || []; horaOracion = r.hora_oracion || ''; }
   const keys = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
   $('keypad').innerHTML = keys.map(k => k === '' ? '<span></span>' : k === '⌫'
     ? '<button class="key key--fn" data-k="del">Borrar</button>' : `<button class="key" data-k="${k}">${k}</button>`).join('');
@@ -121,20 +153,20 @@
     paintDots();
     if (pin.length === 4) {
       const eq = await API.verificarPinLider(pin);
-      if (eq) { codigo = pin; equipo = Object.assign({}, eq, API.equipo(eq.id) || {}); inter = await API.interaccionesLider(codigo); abrirPanel(); }
+      if (eq) { codigo = pin; equipo = Object.assign({}, eq, API.equipo(eq.id) || {}); aplicarDatos(await API.datosLider(codigo)); abrirPanel(); }
       else { $('pin-dots').classList.add('err'); setTimeout(()=>{ $('pin-dots').classList.remove('err'); pin=''; paintDots(); }, 450); }
     }
   });
 
   /* ---------- Panel ---------- */
-  const WHERE = { resumen:'Mi grupo', integrantes:'Integrantes', comparacion:'Comparación' };
+  const WHERE = { resumen:'Mi grupo', integrantes:'Integrantes', equipo:'Vida del equipo', comparacion:'Ranking' };
   const ESTADO = {
     atencion:    { lbl:'Necesita atención', cls:'st--red',  ic:'!' },
     seguimiento: { lbl:'En seguimiento',    cls:'st--gold', ic:'•' },
     bien:        { lbl:'Al día',            cls:'st--green', ic:'✓' },
     sin_datos:   { lbl:'Sin datos aún',     cls:'st--gray', ic:'–' }
   };
-  let ind = null, seg = null;
+  let ind = null, seg = null, vida = null;
   const TIPO = { visita: { lbl:'Visita', cls:'tp--visita' }, contacto: { lbl:'Contacto', cls:'tp--contacto' }, necesidad: { lbl:'Necesidad', cls:'tp--necesidad' } };
 
   function abrirPanel() {
@@ -145,14 +177,15 @@
   }
   function renderTodo() {
     seg = API.seguimientoEquipo(equipo.id, inter);
-    renderResumen(); renderIntegrantes();
+    vida = API.vidaEquipo(equipo.id, acts);
+    renderResumen(); renderIntegrantes(); renderEquipo();
   }
 
   $('seg').addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b) return;
     const v = b.dataset.view;
     document.querySelectorAll('#seg button').forEach(x => x.classList.toggle('is-active', x === b));
-    ['resumen','integrantes','comparacion'].forEach(k => $('view-'+k).classList.toggle('hide', k !== v));
+    ['resumen','integrantes','equipo','comparacion'].forEach(k => $('view-'+k).classList.toggle('hide', k !== v));
     $('where').textContent = WHERE[v];
   });
 
@@ -208,6 +241,14 @@
         <span class="pill pill--red">${seg.necesidades_abiertas.length}</span></div>` +
         seg.necesidades_abiertas.map(i => necesidadItem(i, true)).join('');
     }
+    h += `<div class="lt-group-head" style="margin-top:18px"><span class="left">${ICON.star} Esta semana en equipo</span></div>
+      <div class="wk-contact">
+        ${tiraOracion(false)}
+        <div class="vd-line"><span>Oración en grupo</span><b>${vida.oraciones} de ${vida.dias_transcurridos} días</b></div>
+        <div class="vd-line"><span>Estudio o actividad</span>${vida.crecimiento.length
+          ? `<b class="vd-ok">✓ ${vida.crecimiento.length} esta semana</b>` : `<b class="vd-pend">Pendiente</b>`}</div>
+        <button class="btn-sg btn-sg--ghost" data-goto="equipo" style="margin-top:10px">Ver vida del equipo</button>
+      </div>`;
     h += '<div style="height:18px"></div>';
     if (!ind.reuniones) {
       h += `<div class="empty-state"><div class="es-ic">${ICON.clipboard}</div>
@@ -277,6 +318,7 @@
           </span>
           <span class="sg-it-f">${fechaCorta(i.fecha)}</span></div>`).join('')}</div>` : '';
     return `<div class="sg-block">
+      ${vida && vida.por_miembro[nombre] ? `<div class="sg-part">Esta semana: oró con el grupo <b>${vida.por_miembro[nombre].oraciones} de ${vida.dias_transcurridos}</b> días · <b>${vida.por_miembro[nombre].crecimiento}</b> estudio/actividad</div>` : ''}
       <div class="sg-line">${estado}${s.abiertas.length ? `<span class="sg-nec">${s.abiertas.length} necesidad${s.abiertas.length===1?'':'es'} abierta${s.abiertas.length===1?'':'s'}</span>` : ''}</div>
       <div class="sg-actions">
         <button class="btn-sg" data-seguir="${esc(nombre)}">${ICON.plus} Registrar seguimiento</button>
@@ -342,7 +384,7 @@
     const r = await API.registrarInteraccion(codigo, { miembro: seguirA, tipo, nota, ayuda: tipo === 'necesidad' ? $('sf-ayuda').value.trim() : '', fecha: $('sf-fecha').value });
     $('sf-save').disabled = false;
     if (!r || r.error) return toast((r && r.error) || 'No se pudo guardar, intenta de nuevo');
-    inter = r.interacciones; cerrarSeguimiento(); renderTodo(); toast('Seguimiento guardado');
+    aplicarDatos(r); cerrarSeguimiento(); renderTodo(); toast('Seguimiento guardado');
   });
 
   document.addEventListener('click', async (e) => {
@@ -355,7 +397,118 @@
       at.disabled = true;
       const r = await API.actualizarInteraccion(codigo, at.dataset.atender, 'atendida');
       if (!r || r.error) { at.disabled = false; return toast((r && r.error) || 'No se pudo actualizar'); }
-      inter = r.interacciones; renderTodo(); toast('Necesidad marcada como atendida');
+      aplicarDatos(r); renderTodo(); toast('Necesidad marcada como atendida');
+    }
+  });
+
+  /* ---------- Vida del equipo: oración diaria + crecimiento ---------- */
+  const DIA = ['D','L','M','M','J','V','S'];
+  function hora12(h) { if (!h) return ''; const [H, M] = h.split(':').map(Number); return (H % 12 || 12) + ':' + String(M).padStart(2,'0') + (H >= 12 ? ' pm' : ' am'); }
+  function tiraOracion(clic) {
+    return `<div class="or-strip">${vida.dias.map((d, i) => {
+      const est = d.oracion ? 'on' : (d.futuro ? 'fut' : (d.hoy ? 'hoy' : 'off'));
+      const t = d.oracion ? `Oraron (${d.oracion.participantes.length})` : (d.futuro ? 'Aún no llega' : (d.hoy ? 'Hoy, pendiente' : 'No se registró'));
+      const tag = clic && !d.futuro ? 'button' : 'span';
+      return `<${tag} class="or-day or-day--${est}" ${clic && !d.futuro ? `data-orar="${d.fecha}"` : ''} title="${fechaCorta(d.fecha)}: ${t}">
+        <span class="or-d">${DIA[i]}</span><span class="or-m">${d.oracion ? '✓' : (d.futuro ? '' : (d.hoy ? '•' : '✕'))}</span></${tag}>`;
+    }).join('')}</div>`;
+  }
+  function renderEquipo() {
+    const n = API.miembros(equipo.id);
+    let h = `<div class="lt-group-head"><span class="left">${ICON.clock} Llamada de oración diaria</span></div>
+      <div class="wk-contact">
+        <p class="lt-note" style="margin:0 0 10px">Una vez al día, a la hora que fijaron como equipo.</p>
+        <div class="or-hora">
+          <input class="input" type="time" id="or-hora" value="${horaOracion}">
+          <button class="btn-sg" id="or-hora-save">${horaOracion ? 'Cambiar hora' : 'Fijar hora'}</button>
+        </div>
+        ${horaOracion ? `<p class="or-hora-txt">Todos los días a las <b>${hora12(horaOracion)}</b></p>` : `<p class="or-hora-txt vd-pend">Aún no han fijado la hora.</p>`}
+        <div class="vd-line" style="margin-top:12px"><span>Esta semana</span><b>${vida.oraciones} de ${vida.dias_transcurridos} días</b></div>
+        ${tiraOracion(true)}
+        <p class="lt-note" style="margin:6px 0 0">Toca un día para registrar o corregir la oración de ese día.</p>
+        <button class="btn-sg" data-orar="${API.hoyLocal()}" style="margin-top:12px">${ICON.plus} ${vida.oracion_hoy ? 'Editar la oración de hoy' : 'Registrar la oración de hoy'}</button>
+      </div>`;
+
+    h += `<div class="lt-group-head" style="margin-top:18px"><span class="left">${ICON.star} Estudio o actividad de crecimiento</span>
+        <span class="pill ${vida.crecimiento.length ? '' : 'pill--gold'}">${vida.crecimiento.length ? '✓ Meta cumplida' : 'Meta: 1 por semana'}</span></div>`;
+    const crecs = acts.filter(a => a.tipo === 'crecimiento').slice(0, 8);
+    h += crecs.length ? crecs.map(a => `<div class="act-item">
+        <span class="tp ${a.subtipo === 'estudio' ? 'tp--contacto' : 'tp--visita'}">${a.subtipo === 'estudio' ? 'Estudio' : 'Actividad'}</span>
+        <span class="act-body">${esc(a.descripcion)}<small>${a.participantes.length} de ${n.length} participaron · ${fechaCorta(a.fecha)}</small></span>
+        <button class="act-del" data-borrar="${a.id}" title="Quitar">${ICON.trash}</button></div>`).join('')
+      : `<p class="lt-note" style="margin:0 4px 8px">Todavía no han registrado ninguna. Puede ser algo pequeño: un devocional, un juego, un servicio juntos.</p>`;
+    h += `<button class="btn-sg" data-crecer="1" style="margin-top:4px">${ICON.plus} Registrar estudio o actividad</button>`;
+
+    h += `<div class="lt-group-head" style="margin-top:18px"><span class="left">${ICON.users} Participación esta semana</span></div>` +
+      n.map(nm => { const p = vida.por_miembro[nm] || { oraciones: 0, crecimiento: 0 };
+        const nada = !p.oraciones && !p.crecimiento && vida.dias_transcurridos > 1;
+        return `<div class="member-row"><div class="avatar">${avatar(nm)}</div>
+          <span class="member-name">${esc(nm)}<span class="member-sub">Oración ${p.oraciones}/${vida.dias_transcurridos} días · ${p.crecimiento} estudio/actividad</span></span>
+          ${nada ? `<span class="st st--gold"><i>•</i>No ha participado</span>` : ''}</div>`; }).join('');
+    $('view-equipo').innerHTML = h;
+  }
+
+  let actTipo = null;
+  function abrirActividad(tipo, fecha) {
+    actTipo = tipo;
+    const n = API.miembros(equipo.id);
+    const existente = tipo === 'oracion' ? acts.find(a => a.tipo === 'oracion' && a.fecha === fecha) : null;
+    $('act-form').reset();
+    $('af-title').textContent = tipo === 'oracion' ? 'Oración en grupo' : 'Estudio o actividad';
+    $('af-sub').textContent = tipo === 'oracion' ? 'Marca quiénes se conectaron a la llamada de oración.' : 'Algo que hicieron juntos para crecer, por mínimo que sea.';
+    document.querySelector('.af-crec').classList.toggle('hide', tipo !== 'crecimiento');
+    $('af-fecha').max = API.hoyLocal(); $('af-fecha').value = fecha || API.hoyLocal();
+    $('af-fecha').disabled = tipo === 'oracion';
+    $('af-part').innerHTML = n.map(nm => `<div class="member-row af-row"><div class="avatar">${avatar(nm)}</div>
+      <span class="member-name">${esc(nm)}</span>
+      <label class="toggle"><input type="checkbox" value="${esc(nm)}" ${!existente || existente.participantes.includes(nm) ? 'checked' : ''}><span class="track"></span><span class="knob"></span></label></div>`).join('');
+    $('af-save').textContent = existente ? 'Guardar cambios' : 'Guardar';
+    $('act-modal').classList.add('show');
+  }
+  function cerrarActividad() { $('act-modal').classList.remove('show'); actTipo = null; }
+  $('af-cancel').addEventListener('click', cerrarActividad);
+  $('act-modal').addEventListener('click', (e) => { if (e.target === $('act-modal')) cerrarActividad(); });
+  $('af-all').addEventListener('click', () => {
+    const cbs = [...$('af-part').querySelectorAll('input')]; const todos = cbs.every(c => c.checked);
+    cbs.forEach(c => c.checked = !todos);
+  });
+  $('act-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const participantes = [...$('af-part').querySelectorAll('input:checked')].map(c => c.value);
+    const payload = { tipo: actTipo, fecha: $('af-fecha').value, participantes };
+    if (actTipo === 'crecimiento') {
+      payload.subtipo = ($('act-form').querySelector('input[name=subtipo]:checked') || {}).value;
+      payload.descripcion = $('af-desc').value.trim();
+      if (!payload.descripcion) return toast('Cuenta brevemente qué hicieron');
+    }
+    if (!participantes.length) return toast('Marca al menos a una persona');
+    $('af-save').disabled = true;
+    const r = await API.registrarActividad(codigo, payload);
+    $('af-save').disabled = false;
+    if (!r || r.error) return toast((r && r.error) || 'No se pudo guardar, intenta de nuevo');
+    aplicarDatos(r); cerrarActividad(); renderTodo(); toast(actTipo === 'oracion' ? 'Oración registrada' : 'Actividad registrada');
+  });
+
+  document.addEventListener('click', async (e) => {
+    const go = e.target.closest('[data-goto]');
+    if (go) return document.querySelector(`#seg [data-view="${go.dataset.goto}"]`).click();
+    const or = e.target.closest('[data-orar]');
+    if (or) return abrirActividad('oracion', or.dataset.orar);
+    if (e.target.closest('[data-crecer]')) return abrirActividad('crecimiento');
+    const del = e.target.closest('[data-borrar]');
+    if (del) {
+      if (!confirm('¿Quitar esta actividad?')) return;
+      const r = await API.eliminarActividad(codigo, del.dataset.borrar);
+      if (!r || r.error) return toast((r && r.error) || 'No se pudo quitar');
+      aplicarDatos(r); renderTodo(); toast('Actividad quitada');
+      return;
+    }
+    if (e.target.id === 'or-hora-save') {
+      const h = $('or-hora').value;
+      if (!h) return toast('Elige la hora de la llamada');
+      const r = await API.fijarHoraOracion(codigo, h);
+      if (!r || r.error) return toast((r && r.error) || 'No se pudo guardar');
+      aplicarDatos(r); renderTodo(); toast('Hora de oración guardada');
     }
   });
 

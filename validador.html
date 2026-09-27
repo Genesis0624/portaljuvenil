@@ -64,7 +64,7 @@
       <!-- Seguimiento de líderes (privado) -->
       <div id="view-seguimiento" class="hide">
         <div class="lt-group-head"><span class="left" id="h-seg"></span><span class="pill" id="seg-week"></span></div>
-        <p class="muted" style="font-size:12.5px;color:var(--light-dim);margin:0 4px 14px">Cuántos integrantes contactó o visitó cada líder esta semana (meta: todos) y las necesidades que han identificado. Esta información es privada.</p>
+        <p class="muted" style="font-size:12.5px;color:var(--light-dim);margin:0 4px 14px">Cuántos integrantes contactó o visitó cada líder esta semana (meta: todos), la oración diaria y el estudio/actividad de cada grupo, y las necesidades identificadas. Esta información es privada.</p>
         <div id="seg-teams"></div>
         <div class="lt-group-head" style="margin-top:18px"><span class="left" id="h-nec"></span><span class="pill pill--red" id="nec-count"></span></div>
         <div id="seg-necs"></div>
@@ -518,13 +518,17 @@
   /* ---------- Seguimiento de líderes ---------- */
   function fechaCorta(iso){ try { return new Date(iso+'T00:00:00').toLocaleDateString('es', { day:'numeric', month:'short' }); } catch(e){ return iso; } }
   const escH = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+  function hora12(h) { const [H, M] = h.split(':').map(Number); return (H % 12 || 12) + ':' + String(M).padStart(2,'0') + (H >= 12 ? ' pm' : ' am'); }
   async function renderSeguimiento() {
     $('seg-teams').innerHTML = '<p class="lt-note">Cargando…</p>';
-    interDir = await API.interaccionesDirectiva(adminPin);
+    const datos = await API.datosDirectiva(adminPin);
+    interDir = datos.interacciones;
     const eqs = API.equipos();
     let tot = 0, cont = 0; const necs = [];
     $('seg-teams').innerHTML = eqs.length ? eqs.map(e => {
       const sg = API.seguimientoEquipo(e.id, interDir);
+      const vd = API.vidaEquipo(e.id, datos.actividades);
+      const hora = datos.horas_oracion[e.id];
       tot += sg.total; cont += sg.contactados;
       sg.necesidades_abiertas.forEach(n => necs.push({ ...n, equipo: e }));
       const p = sg.total ? Math.round((sg.contactados / sg.total) * 100) : 0;
@@ -535,6 +539,10 @@
         <div class="mb-track"><span class="mb-fill" style="width:${p}%"></span></div>
         ${sg.sin_contacto.length ? `<div class="sgd-foot"><b>Sin contacto:</b> ${sg.sin_contacto.map(m => escH(m.nombre)).join(', ')}</div>`
           : (sg.total ? `<div class="sgd-foot" style="color:#1d7a4b">✓ Todo el grupo contactado esta semana</div>` : '')}
+        <div class="sgd-vida">
+          <span>Oración en grupo: <b>${vd.oraciones} de ${vd.dias_transcurridos} días</b>${hora ? ' · ' + hora12(hora) : ' · <i>sin hora fija</i>'}</span>
+          <span>Estudio/actividad: ${vd.crecimiento.length ? `<b style="color:#1d7a4b">✓ ${vd.crecimiento.length}</b>` : '<b style="color:#8a6508">pendiente</b>'}</span>
+        </div>
       </div>`;
     }).join('') : `<div class="empty-state"><div class="es-tt">Aún no hay equipos</div></div>`;
     $('seg-week').textContent = cont + ' de ' + tot;

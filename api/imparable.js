@@ -60,6 +60,9 @@ export default async function handler(req, res) {
         case 'interacciones_directiva': return res.json(await interaccionesDirectiva(b.pin));
         case 'registrar_interaccion':   return res.json(await registrarInteraccion(b));
         case 'actualizar_interaccion':  return res.json(await actualizarInteraccion(b));
+        case 'registrar_actividad':     return res.json(await registrarActividad(b));
+        case 'eliminar_actividad':      return res.json(await eliminarActividad(b));
+        case 'fijar_hora_oracion':      return res.json(await fijarHoraOracion(b));
         case 'verificar_pin_validador': return res.json({ ok: await verificarPinValidador(b.pin) });
         case 'crear_equipo':            return res.json(await crearEquipo(b));
         case 'actualizar_equipo':       return res.json(await actualizarEquipo(b));
@@ -365,8 +368,10 @@ async function enviarFeedback(b) {
 }
 
 /* ===================== Seguimiento del líder (privado) =====================
-   Visitas, contactos y necesidades por integrante. NO forma parte del snapshot
-   público: solo se lee con el código del líder (su grupo) o el PIN de directiva. */
+   Visitas, contactos y necesidades por integrante, y las actividades internas del
+   equipo (oración diaria en grupo y estudio/actividad de crecimiento semanal).
+   NO forma parte del snapshot público: solo se lee con el código del líder
+   (su grupo) o el PIN de directiva. */
 const TIPOS_INTERACCION = ['visita', 'contacto', 'necesidad'];
 let interaccionesLista = false;
 async function ensureInteracciones() {
@@ -375,6 +380,10 @@ async function ensureInteracciones() {
     id TEXT PRIMARY KEY, equipo_id TEXT, miembro TEXT, tipo TEXT,
     nota TEXT, ayuda TEXT, estado TEXT, fecha DATE, lider TEXT,
     atendida_en DATE, creado TIMESTAMPTZ DEFAULT now())`;
+  await sql`CREATE TABLE IF NOT EXISTS actividades_equipo (
+    id TEXT PRIMARY KEY, equipo_id TEXT, tipo TEXT, subtipo TEXT, descripcion TEXT,
+    fecha DATE, participantes JSONB DEFAULT '[]'::jsonb, creado TIMESTAMPTZ DEFAULT now())`;
+  await sql`ALTER TABLE equipos ADD COLUMN IF NOT EXISTS hora_oracion TEXT`;
   interaccionesLista = true;
 }
 function mapInteraccion(r) {
@@ -382,21 +391,35 @@ function mapInteraccion(r) {
   return { id: r.id, equipo_id: r.equipo_id, miembro: r.miembro, tipo: r.tipo, nota: r.nota || '', ayuda: r.ayuda || '',
            estado: r.estado || '', fecha: f(r.fecha), lider: r.lider || '', atendida_en: f(r.atendida_en) };
 }
+function mapActividad(r) {
+  return { id: r.id, equipo_id: r.equipo_id, tipo: r.tipo, subtipo: r.subtipo || '', descripcion: r.descripcion || '',
+           fecha: r.fecha instanceof Date ? r.fecha.toISOString().slice(0, 10) : r.fecha,
+           participantes: Array.isArray(r.participantes) ? r.participantes : [] };
+}
 async function equipoDeLider(pin) {
   if (!pin) return null;
-  return (await sql`SELECT id, nombre, lider_nombre FROM equipos WHERE pin_lider = ${String(pin)} AND activo = TRUE LIMIT 1`)[0] || null;
+  await ensureInteracciones();
+  return (await sql`SELECT id, nombre, lider_nombre, hora_oracion FROM equipos WHERE pin_lider = ${String(pin)} AND activo = TRUE LIMIT 1`)[0] || null;
 }
 async function interaccionesLider(pin) {
   const eq = await equipoDeLider(pin); if (!eq) return { error: 'código de líder inválido' };
   await ensureInteracciones();
-  const r = await sql`SELECT * FROM interacciones WHERE equipo_id = ${eq.id} ORDER BY fecha DESC, creado DESC`;
-  return { ok: true, interacciones: r.map(mapInteraccion) };
+  const [r, a] = await Promise.all([
+    sql`SELECT * FROM interacciones WHERE equipo_id = ${eq.id} ORDER BY fecha DESC, creado DESC`,
+    sql`SELECT * FROM actividades_equipo WHERE equipo_id = ${eq.id} ORDER BY fecha DESC, creado DESC`
+  ]);
+  return { ok: true, interacciones: r.map(mapInteraccion), actividades: a.map(mapActividad), hora_oracion: eq.hora_oracion || '' };
 }
 async function interaccionesDirectiva(pin) {
   if (!(await verificarPinValidador(pin))) return { error: 'PIN de directiva inválido' };
   await ensureInteracciones();
-  const r = await sql`SELECT * FROM interacciones ORDER BY fecha DESC, creado DESC`;
-  return { ok: true, interacciones: r.map(mapInteraccion) };
+  const [r, a, h] = await Promise.all([
+    sql`SELECT * FROM interacciones ORDER BY fecha DESC, creado DESC`,
+    sql`SELECT * FROM actividades_equipo ORDER BY fecha DESC, creado DESC`,
+    sql`SELECT id, hora_oracion FROM equipos`
+  ]);
+  const horas = {}; h.forEach(e => { if (e.hora_oracion) horas[e.id] = e.hora_oracion; });
+  return { ok: true, interacciones: r.map(mapInteraccion), actividades: a.map(mapActividad), horas_oracion: horas };
 }
 async function registrarInteraccion(b) {
   const eq = await equipoDeLider(b.pin); if (!eq) return { error: 'código de líder inválido' };
@@ -422,4 +445,31 @@ async function actualizarInteraccion(b) {
   const estado = b.estado === 'atendida' ? 'atendida' : 'abierta';
   await sql`UPDATE interacciones SET estado = ${estado}, atendida_en = ${estado === 'atendida' ? todayISO() : null} WHERE id = ${it.id}`;
   return esDirectiva ? interaccionesDirectiva(b.pin) : interaccionesLider(b.pin);
+}
+
+// Oración diaria (una por día: volver a registrarla el mismo día la reemplaza)
+// o estudio/actividad de crecimiento (pueden ser varias por semana).
+async function registrarActividad(b) {
+  const eq = await equipoDeLider(b.pin); if (!eq) return { error: 'código de líder inválido' };
+  if (!['oracion', 'crecimiento'].includes(b.tipo)) return { error: 'tipo de actividad inválido' };
+  const subtipo = b.tipo === 'crecimiento' ? (b.subtipo === 'estudio' ? 'estudio' : 'actividad') : '';
+  if (b.tipo === 'crecimiento' && !String(b.descripcion || '').trim()) return { error: 'describe la actividad' };
+  const nombres = (await sql`SELECT nombre FROM miembros WHERE equipo_id = ${eq.id}`).map(m => m.nombre);
+  const participantes = (Array.isArray(b.participantes) ? b.participantes : []).filter(n => nombres.includes(n));
+  const fecha = /^\d{4}-\d{2}-\d{2}$/.test(b.fecha || '') ? b.fecha : todayISO();
+  if (b.tipo === 'oracion') await sql`DELETE FROM actividades_equipo WHERE equipo_id = ${eq.id} AND tipo = 'oracion' AND fecha = ${fecha}`;
+  await sql`INSERT INTO actividades_equipo (id,equipo_id,tipo,subtipo,descripcion,fecha,participantes)
+            VALUES (${uid('act')}, ${eq.id}, ${b.tipo}, ${subtipo}, ${String(b.descripcion || '').trim()}, ${fecha}, ${JSON.stringify(participantes)}::jsonb)`;
+  return interaccionesLider(b.pin);
+}
+async function eliminarActividad(b) {
+  const eq = await equipoDeLider(b.pin); if (!eq) return { error: 'código de líder inválido' };
+  await sql`DELETE FROM actividades_equipo WHERE id = ${b.id} AND equipo_id = ${eq.id}`;
+  return interaccionesLider(b.pin);
+}
+async function fijarHoraOracion(b) {
+  const eq = await equipoDeLider(b.pin); if (!eq) return { error: 'código de líder inválido' };
+  const hora = /^\d{2}:\d{2}$/.test(b.hora || '') ? b.hora : '';
+  await sql`UPDATE equipos SET hora_oracion = ${hora} WHERE id = ${eq.id}`;
+  return interaccionesLider(b.pin);
 }
