@@ -52,6 +52,41 @@
   </div>
 </div>
 
+<!-- ====== Registrar seguimiento ====== -->
+<div class="modal-bg" id="seg-modal">
+  <form class="modal seg-form" id="seg-form" autocomplete="off">
+    <div class="modal-tt" id="sf-title">Seguimiento</div>
+    <p class="sf-sub">¿Qué hiciste con esta persona?</p>
+    <div class="sf-opts" id="sf-opts">
+      <label class="sf-opt"><input type="radio" name="tipo" value="visita"><span><b>Visita</b><small>Fuiste a verla en persona</small></span></label>
+      <label class="sf-opt"><input type="radio" name="tipo" value="contacto"><span><b>Contacto</b><small>Llamada o mensaje</small></span></label>
+      <label class="sf-opt"><input type="radio" name="tipo" value="necesidad"><span><b>Necesidad identificada</b><small>Un problema o necesidad que detectaste</small></span></label>
+    </div>
+    <div class="field sf-nec hide">
+      <label for="sf-nota-nec">¿Qué necesidad o problemática identificaste?</label>
+      <textarea class="input" id="sf-nota-nec" rows="3" placeholder="Ej. Está pasando por un momento difícil en casa"></textarea>
+    </div>
+    <div class="field sf-nec hide">
+      <label for="sf-ayuda">¿Cómo podemos ayudar? (opcional)</label>
+      <textarea class="input" id="sf-ayuda" rows="2" placeholder="Ej. Orar por su familia, acompañarla, ayuda material"></textarea>
+    </div>
+    <div class="field sf-gen">
+      <label for="sf-nota">Nota (opcional)</label>
+      <textarea class="input" id="sf-nota" rows="2" placeholder="Ej. Está bien, pidió oración por sus exámenes"></textarea>
+    </div>
+    <div class="field">
+      <label for="sf-fecha">Fecha</label>
+      <input class="input" type="date" id="sf-fecha">
+    </div>
+    <p class="sf-priv"><span id="sf-lock"></span>Solo lo ven tú y la directiva.</p>
+    <div class="modal-actions">
+      <button class="btn btn--gold" type="submit" id="sf-save">Guardar seguimiento</button>
+      <button class="btn btn--ghost" type="button" id="sf-cancel">Cancelar</button>
+    </div>
+  </form>
+</div>
+<div class="toast" id="toast"></div>
+
 <script src="config.js"></script>
 <script src="icons.js"></script>
 <script src="data.js"></script>
@@ -65,13 +100,17 @@
   function avatar(name){ return (name.match(/\b\w/g)||['?'])[0].toUpperCase(); }
   function fechaCorta(iso){ try { return new Date(iso+'T00:00:00').toLocaleDateString('es', { day:'numeric', month:'short' }); } catch(e){ return iso; } }
 
+  function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2400); }
+  function hoyLocal() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+
   $('pin-back').innerHTML = ICON.back;
   $('main-back').innerHTML = ICON.back;
+  $('sf-lock').innerHTML = ICON.lock;
   $('pin-back').addEventListener('click', () => location.href = 'acceso.html');
-  $('main-back').addEventListener('click', () => { pin=''; paintDots(); $('screen-main').classList.add('hide'); $('screen-pin').classList.remove('hide'); });
+  $('main-back').addEventListener('click', () => { pin=''; codigo=''; inter=[]; paintDots(); $('screen-main').classList.add('hide'); $('screen-pin').classList.remove('hide'); });
 
   /* ---------- PIN ---------- */
-  let pin = '', equipo = null;
+  let pin = '', codigo = '', equipo = null, inter = [];
   const keys = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
   $('keypad').innerHTML = keys.map(k => k === '' ? '<span></span>' : k === '⌫'
     ? '<button class="key key--fn" data-k="del">Borrar</button>' : `<button class="key" data-k="${k}">${k}</button>`).join('');
@@ -82,7 +121,7 @@
     paintDots();
     if (pin.length === 4) {
       const eq = await API.verificarPinLider(pin);
-      if (eq) { equipo = Object.assign({}, eq, API.equipo(eq.id) || {}); abrirPanel(); }
+      if (eq) { codigo = pin; equipo = Object.assign({}, eq, API.equipo(eq.id) || {}); inter = await API.interaccionesLider(codigo); abrirPanel(); }
       else { $('pin-dots').classList.add('err'); setTimeout(()=>{ $('pin-dots').classList.remove('err'); pin=''; paintDots(); }, 450); }
     }
   });
@@ -95,13 +134,18 @@
     bien:        { lbl:'Al día',            cls:'st--green', ic:'✓' },
     sin_datos:   { lbl:'Sin datos aún',     cls:'st--gray', ic:'–' }
   };
-  let ind = null;
+  let ind = null, seg = null;
+  const TIPO = { visita: { lbl:'Visita', cls:'tp--visita' }, contacto: { lbl:'Contacto', cls:'tp--contacto' }, necesidad: { lbl:'Necesidad', cls:'tp--necesidad' } };
 
   function abrirPanel() {
     $('screen-pin').classList.add('hide'); $('screen-main').classList.remove('hide');
     $('badge').textContent = equipo.nombre;
     ind = API.indicadoresEquipo(equipo.id);
-    renderCard(); renderResumen(); renderIntegrantes(); renderComparacion();
+    renderCard(); renderTodo(); renderComparacion();
+  }
+  function renderTodo() {
+    seg = API.seguimientoEquipo(equipo.id, inter);
+    renderResumen(); renderIntegrantes();
   }
 
   $('seg').addEventListener('click', (e) => {
@@ -139,9 +183,32 @@
     return '';
   }
 
+  function necesidadItem(i, conNombre) {
+    return `<div class="nec-item">
+      <div class="nec-top">${conNombre ? `<b>${esc(i.miembro)}</b>` : ''}<span class="nec-fecha">${fechaCorta(i.fecha)}</span></div>
+      <div class="nec-txt">${esc(i.nota)}</div>
+      ${i.ayuda ? `<div class="nec-ayuda"><span>Cómo ayudar:</span> ${esc(i.ayuda)}</div>` : ''}
+      <button class="nec-btn" data-atender="${i.id}">${ICON.check} Marcar como atendida</button>
+    </div>`;
+  }
   function renderResumen() {
     const g = ind.grupo;
-    let h = '';
+    const pctC = seg.total ? Math.round((seg.contactados / seg.total) * 100) : 0;
+    let h = `<div class="lt-group-head"><span class="left">${ICON.chat} Contacto de esta semana</span>
+        <span class="pill ${seg.contactados === seg.total && seg.total ? '' : 'pill--gold'}">${seg.contactados} de ${seg.total}</span></div>
+      <div class="wk-contact">
+        <div class="mb-track"><span class="mb-fill" style="width:${pctC}%"></span></div>
+        <p class="lt-note" style="margin:8px 0 0">Meta: al menos una visita o contacto con cada integrante por semana.</p>
+        ${seg.sin_contacto.length ? `<div class="wk-pend-lbl">Te falta contactar a:</div>
+          <div class="chips">${seg.sin_contacto.map(m => `<button class="chip-btn" data-seguir="${esc(m.nombre)}">${ICON.plus}${esc(m.nombre)}</button>`).join('')}</div>`
+          : (seg.total ? `<div class="ok-note" style="margin-top:10px">${ICON.check} ¡Contactaste a todo tu grupo esta semana!</div>` : '')}
+      </div>`;
+    if (seg.necesidades_abiertas.length) {
+      h += `<div class="lt-group-head" style="margin-top:18px"><span class="left">${ICON.gift} Necesidades abiertas</span>
+        <span class="pill pill--red">${seg.necesidades_abiertas.length}</span></div>` +
+        seg.necesidades_abiertas.map(i => necesidadItem(i, true)).join('');
+    }
+    h += '<div style="height:18px"></div>';
     if (!ind.reuniones) {
       h += `<div class="empty-state"><div class="es-ic">${ICON.clipboard}</div>
         <div class="es-tt">Aún no hay reuniones registradas</div>
@@ -193,6 +260,29 @@
       ${detalle ? `<span class="mb-det">${detalle}</span>` : ''}</div>`;
   }
 
+  const abiertos = new Set();
+  function bloqueSeguimiento(nombre) {
+    const s = seg.miembros.find(x => x.nombre === nombre); if (!s) return '';
+    const estado = s.contactado_semana
+      ? `<span class="sg-ok">${ICON.check} Contactado esta semana</span>`
+      : `<span class="sg-pend">Sin contacto esta semana</span>`;
+    const hist = s.interacciones.length && abiertos.has(nombre)
+      ? `<div class="sg-hist">${s.interacciones.map(i => `<div class="sg-it">
+          <span class="tp ${TIPO[i.tipo].cls}">${TIPO[i.tipo].lbl}</span>
+          <span class="sg-it-body">${i.nota ? esc(i.nota) : '<i>Sin nota</i>'}
+            ${i.ayuda ? `<span class="sg-it-ayuda">Cómo ayudar: ${esc(i.ayuda)}</span>` : ''}
+            ${i.tipo === 'necesidad' ? (i.estado === 'atendida'
+              ? `<span class="sg-it-est">✓ Atendida${i.atendida_en ? ' el ' + fechaCorta(i.atendida_en) : ''}</span>`
+              : `<button class="nec-btn" data-atender="${i.id}">${ICON.check} Marcar como atendida</button>`) : ''}
+          </span>
+          <span class="sg-it-f">${fechaCorta(i.fecha)}</span></div>`).join('')}</div>` : '';
+    return `<div class="sg-block">
+      <div class="sg-line">${estado}${s.abiertas.length ? `<span class="sg-nec">${s.abiertas.length} necesidad${s.abiertas.length===1?'':'es'} abierta${s.abiertas.length===1?'':'s'}</span>` : ''}</div>
+      <div class="sg-actions">
+        <button class="btn-sg" data-seguir="${esc(nombre)}">${ICON.plus} Registrar seguimiento</button>
+        ${s.interacciones.length ? `<button class="btn-sg btn-sg--ghost" data-hist="${esc(nombre)}">${abiertos.has(nombre) ? 'Ocultar' : 'Ver'} historial (${s.interacciones.length})</button>` : ''}
+      </div>${hist}</div>`;
+  }
   function renderIntegrantes() {
     const orden = { atencion:0, seguimiento:1, bien:2, sin_datos:3 };
     const list = ind.miembros.slice().sort((a, b) => orden[a.estado] - orden[b.estado] || a.nombre.localeCompare(b.nombre));
@@ -217,9 +307,57 @@
             ${barra('Puntualidad', m.puntualidad, m.presentes ? '' : 'sin asistencias')}
             ${barra('Retos', m.reto, m.retos_total ? `${m.retos} de ${m.retos_total}` : 'sin retos individuales')}
             ${dots}` : `<p class="lt-note" style="margin:6px 0 0">Todavía no hay registros con su asistencia.</p>`}
+          ${bloqueSeguimiento(m.nombre)}
         </div>`;
       }).join('');
   }
+
+  /* ---------- Registrar seguimiento ---------- */
+  let seguirA = null;
+  function abrirSeguimiento(nombre) {
+    seguirA = nombre;
+    $('sf-title').textContent = 'Seguimiento a ' + nombre;
+    $('seg-form').reset();
+    $('sf-fecha').value = hoyLocal(); $('sf-fecha').max = hoyLocal();
+    pintarTipo();
+    $('seg-modal').classList.add('show');
+  }
+  function cerrarSeguimiento() { $('seg-modal').classList.remove('show'); seguirA = null; }
+  function tipoSel() { const r = $('seg-form').querySelector('input[name=tipo]:checked'); return r ? r.value : ''; }
+  function pintarTipo() {
+    const t = tipoSel();
+    document.querySelectorAll('.sf-nec').forEach(x => x.classList.toggle('hide', t !== 'necesidad'));
+    document.querySelectorAll('.sf-gen').forEach(x => x.classList.toggle('hide', t === 'necesidad'));
+  }
+  $('sf-opts').addEventListener('change', pintarTipo);
+  $('sf-cancel').addEventListener('click', cerrarSeguimiento);
+  $('seg-modal').addEventListener('click', (e) => { if (e.target === $('seg-modal')) cerrarSeguimiento(); });
+  $('seg-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const tipo = tipoSel();
+    if (!tipo) return toast('Elige qué hiciste: visita, contacto o necesidad');
+    const nota = (tipo === 'necesidad' ? $('sf-nota-nec') : $('sf-nota')).value.trim();
+    if (tipo === 'necesidad' && !nota) return toast('Describe la necesidad que identificaste');
+    $('sf-save').disabled = true;
+    const r = await API.registrarInteraccion(codigo, { miembro: seguirA, tipo, nota, ayuda: tipo === 'necesidad' ? $('sf-ayuda').value.trim() : '', fecha: $('sf-fecha').value });
+    $('sf-save').disabled = false;
+    if (!r || r.error) return toast((r && r.error) || 'No se pudo guardar, intenta de nuevo');
+    inter = r.interacciones; cerrarSeguimiento(); renderTodo(); toast('Seguimiento guardado');
+  });
+
+  document.addEventListener('click', async (e) => {
+    const sg = e.target.closest('[data-seguir]');
+    if (sg) return abrirSeguimiento(sg.dataset.seguir);
+    const hs = e.target.closest('[data-hist]');
+    if (hs) { const n = hs.dataset.hist; abiertos.has(n) ? abiertos.delete(n) : abiertos.add(n); return renderIntegrantes(); }
+    const at = e.target.closest('[data-atender]');
+    if (at) {
+      at.disabled = true;
+      const r = await API.actualizarInteraccion(codigo, at.dataset.atender, 'atendida');
+      if (!r || r.error) { at.disabled = false; return toast((r && r.error) || 'No se pudo actualizar'); }
+      inter = r.interacciones; renderTodo(); toast('Necesidad marcada como atendida');
+    }
+  });
 
   function renderComparacion() {
     const r = ind.ranking;

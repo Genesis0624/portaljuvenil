@@ -970,3 +970,73 @@ body.projection .tab { font-size: 17px; padding: 14px; }
   #view-integrantes .mcard { margin-bottom: 0; }
   #view-integrantes > .lt-note, #view-integrantes > .empty-state { grid-column: 1 / -1; }
 }
+
+/* =================== v7 — SEGUIMIENTO DEL LÍDER ===================
+   Visitas, contactos y necesidades por integrante (privado). */
+.seg-form { text-align: left; max-width: 420px; max-height: calc(100vh - 48px); overflow-y: auto; }
+.seg-form .modal-tt { margin-bottom: 2px; overflow-wrap: anywhere; }
+.sf-sub { font-size: 13.5px; color: var(--light-dim); margin-bottom: 14px; }
+.sf-opts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.sf-opt { display: flex; align-items: center; gap: 12px; border: 1px solid var(--light-line); border-radius: 12px; padding: 12px 14px; cursor: pointer; }
+.sf-opt input { width: 18px; height: 18px; accent-color: var(--azul-profundo); flex-shrink: 0; }
+.sf-opt b { display: block; font-size: 14px; color: var(--light-text); }
+.sf-opt small { display: block; font-size: 12px; color: var(--light-dim); }
+.sf-opt:has(input:checked) { border-color: var(--azul-profundo); box-shadow: 0 0 0 1px var(--azul-profundo); background: #f5f7fc; }
+.seg-form textarea.input { resize: vertical; font-family: inherit; min-height: 44px; }
+.sf-priv { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--light-dim); margin: -4px 0 16px; }
+.sf-priv svg { width: 14px; height: 14px; }
+
+/* Contacto semanal (Resumen) */
+.wk-contact { background: #fff; border: 1px solid var(--light-line); border-radius: 14px; padding: 14px; }
+.wk-contact .mb-track { height: 10px; }
+.wk-pend-lbl { font-size: 12px; font-weight: 700; color: var(--light-text); margin: 12px 0 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-btn { display: inline-flex; align-items: center; gap: 5px; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--azul-vivo); background: #eef2fb; border: 1px solid #d9e1f3; border-radius: 20px; padding: 6px 11px; cursor: pointer; }
+.chip-btn svg { width: 13px; height: 13px; }
+
+/* Necesidades */
+.nec-item { background: #fff; border: 1px solid var(--light-line); border-left: 4px solid var(--red); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; }
+.nec-top { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; color: var(--light-text); }
+.nec-fecha { font-size: 11.5px; color: var(--light-dim); margin-left: auto; }
+.nec-txt { font-size: 13.5px; color: var(--light-text); margin-top: 3px; overflow-wrap: anywhere; }
+.nec-ayuda { font-size: 12.5px; color: var(--light-dim); margin-top: 4px; overflow-wrap: anywhere; }
+.nec-ayuda span { font-weight: 700; }
+.nec-btn { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; font: inherit; font-size: 12px; font-weight: 700; color: #1d7a4b; background: #e7f5ee; border: 0; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+.nec-btn svg { width: 13px; height: 13px; }
+
+/* Bloque de seguimiento dentro de la tarjeta del integrante */
+.sg-block { border-top: 1px solid var(--light-line); margin-top: 10px; padding-top: 10px; }
+.sg-line { display: flex; flex-wrap: wrap; gap: 6px 10px; font-size: 12.5px; font-weight: 600; }
+.sg-ok { display: inline-flex; align-items: center; gap: 4px; color: #1d7a4b; }
+.sg-ok svg { width: 14px; height: 14px; }
+.sg-pend { color: #8a6508; }
+.sg-pend::before { content: '•'; margin-right: 4px; }
+.sg-nec { color: #a3432f; }
+.sg-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.btn-sg { display: inline-flex; align-items: center; gap: 5px; font: inherit; font-size: 12.5px; font-weight: 700; color: #fff; background: var(--azul-profundo); border: 1px solid var(--azul-profundo); border-radius: 9px; padding: 8px 12px; cursor: pointer; }
+.btn-sg svg { width: 14px; height: 14px; }
+.btn-sg--ghost { background: #fff; color: var(--azul-vivo); border-color: var(--light-line); }
+.sg-hist { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.sg-it { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: start; font-size: 12.5px; color: var(--light-text); }
+.sg-it-body { min-width: 0; overflow-wrap: anywhere; }
+.sg-it-body i { color: var(--light-dim); }
+.sg-it-ayuda, .sg-it-est { display: block; font-size: 11.5px; color: var(--light-dim); margin-top: 2px; }
+.sg-it-est { color: #1d7a4b; font-weight: 600; }
+.sg-it-f { font-size: 11px; color: var(--light-dim); white-space: nowrap; }
+.tp { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
+.tp--visita { background: #e7f5ee; color: #1d7a4b; }
+.tp--contacto { background: #eef2fb; color: var(--azul-vivo); }
+.tp--necesidad { background: #fbe9e5; color: #a3432f; }
+
+/* Directiva › Seguimiento */
+.sgd-team { background: #fff; border: 1px solid var(--light-line); border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; }
+.sgd-head { display: flex; align-items: center; gap: 12px; }
+.sgd-head .tr-disc { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-family: 'Bebas Neue'; font-size: 17px; flex-shrink: 0; }
+.sgd-name { flex: 1; min-width: 0; }
+.sgd-name b { display: block; font-size: 14px; color: var(--light-text); }
+.sgd-name span { display: block; font-size: 12px; color: var(--light-dim); }
+.sgd-num { font-family: 'Bebas Neue', sans-serif; font-size: 24px; color: var(--azul-profundo); text-align: right; line-height: 1; }
+.sgd-num small { display: block; font-family: 'Inter', sans-serif; font-size: 10.5px; font-weight: 600; color: var(--light-dim); }
+.sgd-team .mb-track { margin-top: 10px; }
+.sgd-foot { font-size: 12px; color: var(--light-dim); margin-top: 6px; overflow-wrap: anywhere; }
+.sgd-foot b { color: #8a6508; }

@@ -39,6 +39,7 @@
     <div class="lt-scroll">
       <div class="lt-segment lt-segment--scroll" id="seg">
         <button class="is-active" data-view="pendientes">Pendientes</button>
+        <button data-view="seguimiento">Seguimiento</button>
         <button data-view="revisados">Revisados</button>
         <button data-view="historial">Historial</button>
         <button data-view="reto">Reto</button>
@@ -58,6 +59,15 @@
           <div class="detail-team" id="dt-team"></div>
           <div id="detail"></div>
         </div>
+      </div>
+
+      <!-- Seguimiento de líderes (privado) -->
+      <div id="view-seguimiento" class="hide">
+        <div class="lt-group-head"><span class="left" id="h-seg"></span><span class="pill" id="seg-week"></span></div>
+        <p class="muted" style="font-size:12.5px;color:var(--light-dim);margin:0 4px 14px">Cuántos integrantes contactó o visitó cada líder esta semana (meta: todos) y las necesidades que han identificado. Esta información es privada.</p>
+        <div id="seg-teams"></div>
+        <div class="lt-group-head" style="margin-top:18px"><span class="left" id="h-nec"></span><span class="pill pill--red" id="nec-count"></span></div>
+        <div id="seg-necs"></div>
       </div>
 
       <!-- Revisados -->
@@ -164,14 +174,16 @@
   $('h-reto').innerHTML = ICON.flag + ' Reto de la semana';
   $('h-extra').innerHTML = ICON.gift + ' Otorgar puntos extra';
   $('h-equipos').innerHTML = ICON.users + ' Equipos';
+  $('h-seg').innerHTML = ICON.chat + ' Contacto de esta semana';
+  $('h-nec').innerHTML = ICON.gift + ' Necesidades abiertas';
   $('h-fb').innerHTML = ICON.chat + ' Feedback recibido';
   $('pin-back').addEventListener('click', () => location.href = 'acceso.html');
   $('main-back').addEventListener('click', () => location.href = 'acceso.html');
 
-  const WHERE = { pendientes:'Bandeja de validación', revisados:'Registros revisados', historial:'Historial de puntos', reto:'Gestión de reto', extra:'Puntos extra', equipos:'Equipos', feedback:'Feedback' };
+  const WHERE = { seguimiento:'Seguimiento de líderes', pendientes:'Bandeja de validación', revisados:'Registros revisados', historial:'Historial de puntos', reto:'Gestión de reto', extra:'Puntos extra', equipos:'Equipos', feedback:'Feedback' };
 
   /* ---------- PIN ---------- */
-  let pin = '';
+  let pin = '', adminPin = '', interDir = [];
   const keys = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
   $('keypad').innerHTML = keys.map(k => k===''?'<span></span>':k==='⌫'?'<button class="key key--fn" data-k="del">Borrar</button>':`<button class="key" data-k="${k}">${k}</button>`).join('');
   function paintDots(){ document.querySelectorAll('#pin-dots .d').forEach((d,i)=>d.classList.toggle('on', i<pin.length)); }
@@ -181,7 +193,7 @@
     paintDots();
     if (pin.length === 4) {
       const ok = await API.verificarPinValidador(pin);
-      if (ok) enter();
+      if (ok) { adminPin = pin; enter(); }
       else { $('pin-dots').classList.add('err'); setTimeout(()=>{ $('pin-dots').classList.remove('err'); pin=''; paintDots(); }, 450); }
     }
   });
@@ -196,13 +208,14 @@
     document.querySelectorAll('#seg button').forEach(x => x.classList.remove('is-active'));
     b.classList.add('is-active');
     const v = b.dataset.view;
-    ['pendientes','revisados','historial','reto','extra','equipos','feedback'].forEach(k => $('view-'+k).classList.toggle('hide', k !== v));
+    ['pendientes','seguimiento','revisados','historial','reto','extra','equipos','feedback'].forEach(k => $('view-'+k).classList.toggle('hide', k !== v));
     $('where').textContent = WHERE[v];
     if (v === 'pendientes') { backToList(); }
     if (v === 'revisados') renderRevisados();
     if (v === 'historial') renderHistorial();
     if (v === 'equipos') renderEquipos();
     if (v === 'feedback') renderFeedback();
+    if (v === 'seguimiento') renderSeguimiento();
   });
 
   /* ========== PENDIENTES (lista -> detalle) ========== */
@@ -385,7 +398,7 @@
     await API.reabrirRegistro(b.dataset.corregir);
     // ir a Pendientes y abrir el detalle del registro reabierto
     document.querySelectorAll('#seg button').forEach(x => x.classList.toggle('is-active', x.dataset.view === 'pendientes'));
-    ['pendientes','revisados','historial','reto','extra','equipos','feedback'].forEach(k => $('view-'+k).classList.toggle('hide', k !== 'pendientes'));
+    ['pendientes','seguimiento','revisados','historial','reto','extra','equipos','feedback'].forEach(k => $('view-'+k).classList.toggle('hide', k !== 'pendientes'));
     $('where').textContent = WHERE.pendientes;
     renderPendList(); renderRevisados(); renderHistorial();
     openDetail(b.dataset.corregir);
@@ -500,6 +513,47 @@
       return;
     }
     if (e.target.closest('[data-cancel]')) renderEquipos();
+  });
+
+  /* ---------- Seguimiento de líderes ---------- */
+  function fechaCorta(iso){ try { return new Date(iso+'T00:00:00').toLocaleDateString('es', { day:'numeric', month:'short' }); } catch(e){ return iso; } }
+  const escH = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+  async function renderSeguimiento() {
+    $('seg-teams').innerHTML = '<p class="lt-note">Cargando…</p>';
+    interDir = await API.interaccionesDirectiva(adminPin);
+    const eqs = API.equipos();
+    let tot = 0, cont = 0; const necs = [];
+    $('seg-teams').innerHTML = eqs.length ? eqs.map(e => {
+      const sg = API.seguimientoEquipo(e.id, interDir);
+      tot += sg.total; cont += sg.contactados;
+      sg.necesidades_abiertas.forEach(n => necs.push({ ...n, equipo: e }));
+      const p = sg.total ? Math.round((sg.contactados / sg.total) * 100) : 0;
+      return `<div class="sgd-team">
+        <div class="sgd-head"><span class="tr-disc" style="${discStyle(e)}">${e.inicial}</span>
+          <span class="sgd-name"><b>${escH(e.nombre)}</b><span>${e.lider_nombre ? 'Líder: ' + escH(e.lider_nombre) : 'Sin líder asignado'}</span></span>
+          <span class="sgd-num">${sg.contactados}/${sg.total}<small>contactados</small></span></div>
+        <div class="mb-track"><span class="mb-fill" style="width:${p}%"></span></div>
+        ${sg.sin_contacto.length ? `<div class="sgd-foot"><b>Sin contacto:</b> ${sg.sin_contacto.map(m => escH(m.nombre)).join(', ')}</div>`
+          : (sg.total ? `<div class="sgd-foot" style="color:#1d7a4b">✓ Todo el grupo contactado esta semana</div>` : '')}
+      </div>`;
+    }).join('') : `<div class="empty-state"><div class="es-tt">Aún no hay equipos</div></div>`;
+    $('seg-week').textContent = cont + ' de ' + tot;
+    $('nec-count').textContent = necs.length;
+    $('seg-necs').innerHTML = necs.length ? necs.map(i => `<div class="nec-item">
+        <div class="nec-top"><b>${escH(i.miembro)}</b> <span style="color:var(--light-dim)">· ${escH(i.equipo.nombre)}</span><span class="nec-fecha">${fechaCorta(i.fecha)}</span></div>
+        <div class="nec-txt">${escH(i.nota)}</div>
+        ${i.ayuda ? `<div class="nec-ayuda"><span>Cómo ayudar:</span> ${escH(i.ayuda)}</div>` : ''}
+        <div class="nec-ayuda">Registrada por ${escH(i.lider || 'el líder')}</div>
+        <button class="nec-btn" data-atender="${i.id}">${ICON.check} Marcar como atendida</button>
+      </div>`).join('')
+      : `<div class="ok-note">${ICON.check} No hay necesidades abiertas.</div>`;
+  }
+  $('seg-necs').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-atender]'); if (!b) return;
+    b.disabled = true;
+    const r = await API.actualizarInteraccion(adminPin, b.dataset.atender, 'atendida');
+    if (!r || r.error) { b.disabled = false; return toast((r && r.error) || 'No se pudo actualizar'); }
+    renderSeguimiento(); toast('Necesidad marcada como atendida');
   });
 
   /* ---------- Feedback ---------- */

@@ -14,7 +14,7 @@
 (function () {
   'use strict';
 
-  const STORE_KEY = 'imparable_v3';
+  const STORE_KEY = 'imparable_v4';
 
   const COLORES = [
     { hex: '#D4A017', nombre: 'Dorado' }, { hex: '#1A3A8F', nombre: 'Azul' },
@@ -83,8 +83,20 @@
       visitas_conteo: { 'Diego Salas': 0 },
       puntos_extra: [],
       feedback: [],
-      historial: []
+      historial: [],
+      interacciones: interaccionesDemo()
     };
+  }
+  function interaccionesDemo() {
+    const dia = (n) => { const f = new Date(); f.setDate(f.getDate() - n); return f.toISOString().slice(0, 10); };
+    const base = { equipo_id: 'leones', lider: 'Miriam Acosta', ayuda: '', estado: '', atendida_en: null };
+    return [
+      { ...base, id: 'int-d1', miembro: 'Caleb Díaz', tipo: 'necesidad', fecha: dia(9), estado: 'abierta',
+        nota: 'Perdió su trabajo y está desanimado; por eso ha faltado.', ayuda: 'Orar con él y compartirle ofertas de empleo.' },
+      { ...base, id: 'int-d2', miembro: 'Caleb Díaz', tipo: 'contacto', fecha: dia(9), nota: 'Le escribí por WhatsApp.' },
+      { ...base, id: 'int-d3', miembro: 'Sara Méndez', tipo: 'visita', fecha: dia(1), nota: 'Visita en su casa con su familia.' },
+      { ...base, id: 'int-d4', miembro: 'Daniel Ortega', tipo: 'contacto', fecha: dia(0), nota: '' }
+    ];
   }
 
   // Semanas pasadas ya validadas de Leones, con detalle por persona, para que el
@@ -152,7 +164,7 @@
       base_puntos: s.base_puntos || {}, reto_vigente: s.reto_vigente || null,
       retos_historial: s.retos_historial || [], registros: s.registros || [],
       visitas_conteo: s.visitas_conteo || {}, puntos_extra: s.puntos_extra || [],
-      feedback: s.feedback || [], historial: s.historial || []
+      feedback: s.feedback || [], historial: s.historial || [], interacciones: []
     };
   }
   // Escritura remota estándar: POST -> refresca cache -> devuelve respuesta.
@@ -292,6 +304,28 @@
     if (d.reto_vigente) { d.reto_vigente.activo = false; (d.retos_historial = d.retos_historial || []).unshift(d.reto_vigente); }
     d.reto_vigente = { id: 'r-' + next(), descripcion, tipo, activo: true, fecha: hoyISO() }; persist(); return d.reto_vigente;
   }
+  function _interaccionesDe(equipoId) {
+    return (db().interacciones || []).filter(i => !equipoId || i.equipo_id === equipoId)
+      .slice().sort((a, b) => (b.fecha + b.id).localeCompare(a.fecha + a.id));
+  }
+  function _equipoDeLider(pin) { return db().equipos.find(e => e.pin_lider && e.pin_lider === pin && e.activo) || null; }
+  function _registrarInteraccion(pin, p) {
+    const d = db(); const eq = _equipoDeLider(pin); if (!eq) return { error: 'código de líder inválido' };
+    if (!['visita', 'contacto', 'necesidad'].includes(p.tipo)) return { error: 'tipo de seguimiento inválido' };
+    if (!(d.miembros[eq.id] || []).includes(p.miembro)) return { error: 'esa persona no es parte de tu grupo' };
+    if (p.tipo === 'necesidad' && !(p.nota || '').trim()) return { error: 'describe la necesidad' };
+    (d.interacciones = d.interacciones || []).push({ id: 'int-' + Date.now() + '-' + next(), equipo_id: eq.id, miembro: p.miembro, tipo: p.tipo,
+      nota: (p.nota || '').trim(), ayuda: (p.ayuda || '').trim(), estado: p.tipo === 'necesidad' ? 'abierta' : '',
+      fecha: p.fecha || hoyISO(), lider: eq.lider_nombre || 'Líder', atendida_en: null });
+    persist(); return { ok: true, interacciones: _interaccionesDe(eq.id) };
+  }
+  function _actualizarInteraccion(pin, id, estado) {
+    const d = db(); const it = (d.interacciones || []).find(i => i.id === id); if (!it) return { error: 'registro no encontrado' };
+    const eq = _equipoDeLider(pin); const esDirectiva = !eq && d.config.pin_validador === pin;
+    if (!esDirectiva && !(eq && eq.id === it.equipo_id)) return { error: 'sin permiso' };
+    it.estado = estado === 'atendida' ? 'atendida' : 'abierta'; it.atendida_en = it.estado === 'atendida' ? hoyISO() : null;
+    persist(); return { ok: true, interacciones: _interaccionesDe(esDirectiva ? null : eq.id) };
+  }
   function _enviarFeedback({ rating, comentario }) {
     const d = db(); const fb = { id: 'fb-' + next(), rating: rating || 0, comentario: (comentario || '').trim(), fecha: hoyISO() };
     (d.feedback = d.feedback || []).push(fb); persist(); return fb;
@@ -343,6 +377,22 @@
       atencion: miembros.filter(m => m.estado === 'atencion'),
       ranking, posicion: fila ? fila.pos : null, puntos: fila ? fila.puntos : 0
     };
+  }
+
+  /* ============ Seguimiento semanal del líder ============ */
+  // Meta: al menos un contacto (visita, llamada/mensaje o necesidad atendida en
+  // persona) con cada integrante por semana. La semana empieza el domingo.
+  function seguimiento(d, equipoId, lista) {
+    const suyas = (lista || []).filter(i => i.equipo_id === equipoId);
+    const miembros = (d.miembros[equipoId] || []).map(nombre => {
+      const deEl = suyas.filter(i => i.miembro === nombre);
+      const semana = deEl.filter(i => inWindow(i.fecha, 'semanal'));
+      return { nombre, interacciones: deEl, contactado_semana: semana.length > 0, semana,
+        ultima: deEl[0] || null, abiertas: deEl.filter(i => i.tipo === 'necesidad' && i.estado === 'abierta') };
+    });
+    return { miembros, total: miembros.length, contactados: miembros.filter(m => m.contactado_semana).length,
+      sin_contacto: miembros.filter(m => !m.contactado_semana),
+      necesidades_abiertas: suyas.filter(i => i.tipo === 'necesidad' && i.estado === 'abierta') };
   }
 
   /* ============================ API pública ============================ */
@@ -399,6 +449,26 @@
     feedbackResumen() { const list = db().feedback || []; const n = list.length; const avg = n ? (list.reduce((s, f) => s + (f.rating || 0), 0) / n) : 0; return { total: n, promedio: Math.round(avg * 10) / 10 }; },
 
     indicadoresEquipo(equipoId) { return indicadores(db(), equipoId); },
+    seguimientoEquipo(equipoId, interacciones) { return seguimiento(db(), equipoId, interacciones); },
+    tipoInteraccionLabel: (t) => ({ visita: 'Visita', contacto: 'Contacto', necesidad: 'Necesidad identificada' }[t] || t),
+
+    /* ---- seguimiento privado (requiere código de líder o PIN de directiva) ---- */
+    async interaccionesLider(pin) {
+      if (backendMode()) { const r = await remotePost('interacciones_lider', { pin }); return (r && r.ok) ? r.interacciones : []; }
+      return _equipoDeLider(pin) ? _interaccionesDe(_equipoDeLider(pin).id) : [];
+    },
+    async interaccionesDirectiva(pin) {
+      if (backendMode()) { const r = await remotePost('interacciones_directiva', { pin }); return (r && r.ok) ? r.interacciones : []; }
+      return db().config.pin_validador === pin ? _interaccionesDe(null) : [];
+    },
+    async registrarInteraccion(pin, payload) {
+      if (backendMode()) return remotePost('registrar_interaccion', Object.assign({ pin }, payload));
+      return _registrarInteraccion(pin, payload);
+    },
+    async actualizarInteraccion(pin, id, estado) {
+      if (backendMode()) return remotePost('actualizar_interaccion', { pin, id, estado });
+      return _actualizarInteraccion(pin, id, estado);
+    },
 
     calc: { asistencia: pAsistencia, puntualidad: pPuntualidad, reto: pReto, visita: (n) => pVisita(n, db()), actividad: pActividad, logro: pLogro },
 

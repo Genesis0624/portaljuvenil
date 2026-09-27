@@ -56,6 +56,10 @@ export default async function handler(req, res) {
       switch (b.accion) {
         case 'verificar_pin_equipo':    return res.json(await verificarPinEquipo(b.pin));
         case 'verificar_pin_lider':     return res.json(await verificarPinLider(b.pin));
+        case 'interacciones_lider':     return res.json(await interaccionesLider(b.pin));
+        case 'interacciones_directiva': return res.json(await interaccionesDirectiva(b.pin));
+        case 'registrar_interaccion':   return res.json(await registrarInteraccion(b));
+        case 'actualizar_interaccion':  return res.json(await actualizarInteraccion(b));
         case 'verificar_pin_validador': return res.json({ ok: await verificarPinValidador(b.pin) });
         case 'crear_equipo':            return res.json(await crearEquipo(b));
         case 'actualizar_equipo':       return res.json(await actualizarEquipo(b));
@@ -358,4 +362,64 @@ async function crearReto(b) {
 async function enviarFeedback(b) {
   await sql`INSERT INTO feedback (id,rating,comentario,fecha) VALUES (${uid('fb')}, ${Number(b.rating) || 0}, ${b.comentario || ''}, ${todayISO()})`;
   return { ok: true };
+}
+
+/* ===================== Seguimiento del líder (privado) =====================
+   Visitas, contactos y necesidades por integrante. NO forma parte del snapshot
+   público: solo se lee con el código del líder (su grupo) o el PIN de directiva. */
+const TIPOS_INTERACCION = ['visita', 'contacto', 'necesidad'];
+let interaccionesLista = false;
+async function ensureInteracciones() {
+  if (interaccionesLista) return;
+  await sql`CREATE TABLE IF NOT EXISTS interacciones (
+    id TEXT PRIMARY KEY, equipo_id TEXT, miembro TEXT, tipo TEXT,
+    nota TEXT, ayuda TEXT, estado TEXT, fecha DATE, lider TEXT,
+    atendida_en DATE, creado TIMESTAMPTZ DEFAULT now())`;
+  interaccionesLista = true;
+}
+function mapInteraccion(r) {
+  const f = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : d);
+  return { id: r.id, equipo_id: r.equipo_id, miembro: r.miembro, tipo: r.tipo, nota: r.nota || '', ayuda: r.ayuda || '',
+           estado: r.estado || '', fecha: f(r.fecha), lider: r.lider || '', atendida_en: f(r.atendida_en) };
+}
+async function equipoDeLider(pin) {
+  if (!pin) return null;
+  return (await sql`SELECT id, nombre, lider_nombre FROM equipos WHERE pin_lider = ${String(pin)} AND activo = TRUE LIMIT 1`)[0] || null;
+}
+async function interaccionesLider(pin) {
+  const eq = await equipoDeLider(pin); if (!eq) return { error: 'código de líder inválido' };
+  await ensureInteracciones();
+  const r = await sql`SELECT * FROM interacciones WHERE equipo_id = ${eq.id} ORDER BY fecha DESC, creado DESC`;
+  return { ok: true, interacciones: r.map(mapInteraccion) };
+}
+async function interaccionesDirectiva(pin) {
+  if (!(await verificarPinValidador(pin))) return { error: 'PIN de directiva inválido' };
+  await ensureInteracciones();
+  const r = await sql`SELECT * FROM interacciones ORDER BY fecha DESC, creado DESC`;
+  return { ok: true, interacciones: r.map(mapInteraccion) };
+}
+async function registrarInteraccion(b) {
+  const eq = await equipoDeLider(b.pin); if (!eq) return { error: 'código de líder inválido' };
+  if (!TIPOS_INTERACCION.includes(b.tipo)) return { error: 'tipo de seguimiento inválido' };
+  const esMiembro = await sql`SELECT 1 FROM miembros WHERE equipo_id = ${eq.id} AND nombre = ${b.miembro} LIMIT 1`;
+  if (!esMiembro.length) return { error: 'esa persona no es parte de tu grupo' };
+  if (b.tipo === 'necesidad' && !String(b.nota || '').trim()) return { error: 'describe la necesidad' };
+  const fecha = /^\d{4}-\d{2}-\d{2}$/.test(b.fecha || '') ? b.fecha : todayISO();
+  await ensureInteracciones();
+  await sql`INSERT INTO interacciones (id,equipo_id,miembro,tipo,nota,ayuda,estado,fecha,lider)
+            VALUES (${uid('int')}, ${eq.id}, ${b.miembro}, ${b.tipo}, ${String(b.nota || '').trim()}, ${String(b.ayuda || '').trim()},
+                    ${b.tipo === 'necesidad' ? 'abierta' : ''}, ${fecha}, ${eq.lider_nombre || 'Líder'})`;
+  return interaccionesLider(b.pin);
+}
+// Marcar una necesidad como atendida (o reabrirla). Puede hacerlo el líder del grupo o la directiva.
+async function actualizarInteraccion(b) {
+  await ensureInteracciones();
+  const it = (await sql`SELECT * FROM interacciones WHERE id = ${b.id} LIMIT 1`)[0];
+  if (!it) return { error: 'registro no encontrado' };
+  const eq = await equipoDeLider(b.pin);
+  const esDirectiva = !eq && await verificarPinValidador(b.pin);
+  if (!esDirectiva && !(eq && eq.id === it.equipo_id)) return { error: 'sin permiso' };
+  const estado = b.estado === 'atendida' ? 'atendida' : 'abierta';
+  await sql`UPDATE interacciones SET estado = ${estado}, atendida_en = ${estado === 'atendida' ? todayISO() : null} WHERE id = ${it.id}`;
+  return esDirectiva ? interaccionesDirectiva(b.pin) : interaccionesLider(b.pin);
 }

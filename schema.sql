@@ -86,6 +86,22 @@ CREATE TABLE IF NOT EXISTS historial (
   creado      TIMESTAMPTZ DEFAULT now()
 );
 
+-- Seguimiento del líder a cada integrante (privado: no sale en el snapshot público).
+-- La API también la crea sola si no existe.
+CREATE TABLE IF NOT EXISTS interacciones (
+  id          TEXT PRIMARY KEY,
+  equipo_id   TEXT,
+  miembro     TEXT,
+  tipo        TEXT,        -- visita | contacto | necesidad
+  nota        TEXT,
+  ayuda       TEXT,        -- cómo podemos ayudar (necesidades)
+  estado      TEXT,        -- abierta | atendida (solo necesidades)
+  fecha       DATE,
+  lider       TEXT,
+  atendida_en DATE,
+  creado      TIMESTAMPTZ DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS config (
   clave TEXT PRIMARY KEY,
   valor TEXT
